@@ -6,3 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anyhow = "1.0.72"
+comms = { path = "../comms" }
+serde = "1.0.180"
+serde_json = "1.0.104"
+tokio = { version = "1.29.1", features = ["full"] }
+tokio-stream = { version = "0.1.14", features = ["io-util"] }
