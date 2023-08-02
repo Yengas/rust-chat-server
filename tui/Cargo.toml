@@ -6,3 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anyhow = "1.0.72"
+crossterm = "0.26.1"
+ratatui = { version = "0.22.0", features = ["all-widgets"] }
+tokio = { version = "1.29.1", features = ["full"] }
