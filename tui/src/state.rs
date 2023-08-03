@@ -1,3 +1,5 @@
+use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
+
 pub enum InputMode {
     Normal,
     Editing,
@@ -27,23 +29,59 @@ impl Default for App {
 }
 
 impl App {
-    pub(crate) fn move_cursor_left(&mut self) {
+    pub(crate) fn handle_event(&mut self, key: KeyEvent) -> anyhow::Result<()> {
+        match self.input_mode {
+            InputMode::Normal => match key.code {
+                KeyCode::Char('e') => {
+                    self.input_mode = InputMode::Editing;
+                }
+                KeyCode::Char('q') => {
+                    return Err(anyhow::anyhow!("Quit"));
+                }
+                _ => {}
+            },
+            InputMode::Editing if key.kind == KeyEventKind::Press => match key.code {
+                KeyCode::Enter => self.submit_message(),
+                KeyCode::Char(to_insert) => {
+                    self.enter_char(to_insert);
+                }
+                KeyCode::Backspace => {
+                    self.delete_char();
+                }
+                KeyCode::Left => {
+                    self.move_cursor_left();
+                }
+                KeyCode::Right => {
+                    self.move_cursor_right();
+                }
+                KeyCode::Esc => {
+                    self.input_mode = InputMode::Normal;
+                }
+                _ => {}
+            },
+            _ => {}
+        }
+
+        Ok(())
+    }
+
+    fn move_cursor_left(&mut self) {
         let cursor_moved_left = self.cursor_position.saturating_sub(1);
         self.cursor_position = self.clamp_cursor(cursor_moved_left);
     }
 
-    pub(crate) fn move_cursor_right(&mut self) {
+    fn move_cursor_right(&mut self) {
         let cursor_moved_right = self.cursor_position.saturating_add(1);
         self.cursor_position = self.clamp_cursor(cursor_moved_right);
     }
 
-    pub(crate) fn enter_char(&mut self, new_char: char) {
+    fn enter_char(&mut self, new_char: char) {
         self.input.insert(self.cursor_position, new_char);
 
         self.move_cursor_right();
     }
 
-    pub(crate) fn delete_char(&mut self) {
+    fn delete_char(&mut self) {
         let is_not_cursor_leftmost = self.cursor_position != 0;
         if is_not_cursor_leftmost {
             // Method "remove" is not used on the saved text for deleting the selected char.
@@ -65,15 +103,15 @@ impl App {
         }
     }
 
-    pub(crate) fn clamp_cursor(&self, new_cursor_pos: usize) -> usize {
+    fn clamp_cursor(&self, new_cursor_pos: usize) -> usize {
         new_cursor_pos.clamp(0, self.input.len())
     }
 
-    pub(crate) fn reset_cursor(&mut self) {
+    fn reset_cursor(&mut self) {
         self.cursor_position = 0;
     }
 
-    pub(crate) fn submit_message(&mut self) {
+    fn submit_message(&mut self) {
         self.messages.push(self.input.clone());
         self.input.clear();
         self.reset_cursor();
