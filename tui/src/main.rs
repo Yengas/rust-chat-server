@@ -143,30 +143,12 @@ fn ui<B: Backend>(frame: &mut Frame<B>, app: &App) {
             panic!("The middle layout should have 3 chunks")
         };
 
-    let (msg, style) = match app.input_mode {
-        InputMode::Normal => (
-            vec![
-                "Press ".into(),
-                "q".bold(),
-                " to exit, ".into(),
-                "e".bold(),
-                " to start editing.".bold(),
-            ],
-            Style::default().add_modifier(Modifier::RAPID_BLINK),
-        ),
-        InputMode::Editing => (
-            vec![
-                "Press ".into(),
-                "Esc".bold(),
-                " to stop editing, ".into(),
-                "Enter".bold(),
-                " to record the message".into(),
-            ],
-            Style::default(),
-        ),
-    };
-    let mut text = Text::from(Line::from(msg));
-    text.patch_style(style);
+    let text = Text::from(Line::from(vec![
+        "on ".into(),
+        "#room1".bold(),
+        " for ".into(),
+        "interesting talks about life".italic(),
+    ]));
     let help_message = Paragraph::new(text).block(
         Block::default()
             .borders(Borders::ALL)
@@ -238,7 +220,12 @@ fn ui<B: Backend>(frame: &mut Frame<B>, app: &App) {
 
     frame.render_widget(room_users_list, container_room_users);
 
-    let usage = Paragraph::new("(q) to exit\n(e) to start editing")
-        .block(Block::default().borders(Borders::ALL).title("Usage"));
+    let mut usage_text = Text::from(vec![
+        Line::from(vec!["(q)".bold(), " to exit".into()]),
+        Line::from(vec!["(e)".bold(), " to start editing".into()]),
+    ]);
+    usage_text.patch_style(Style::default().add_modifier(Modifier::RAPID_BLINK));
+    let usage =
+        Paragraph::new(usage_text).block(Block::default().borders(Borders::ALL).title("Usage"));
     frame.render_widget(usage, container_usage);
 }
