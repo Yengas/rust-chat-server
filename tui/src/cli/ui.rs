@@ -42,7 +42,11 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
         List::new(room_list).block(Block::default().borders(Borders::ALL).title("Rooms"));
     frame.render_widget(room_list, container_room_list);
 
-    let user_info = Paragraph::new("User: @jjohndoejohndoejohndoejohndoejohndoeohndoe").block(
+    let user_info = Paragraph::new(Text::from(vec![
+        Line::from("User: @jjohndoejohndoejohndoejohndoejohndoeohndoe"),
+        Line::from(format!("Seconds in app: {}", app.timer)),
+    ]))
+    .block(
         Block::default()
             .borders(Borders::ALL)
             .title("User Information"),

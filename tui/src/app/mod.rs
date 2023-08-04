@@ -1,4 +1,7 @@
+use std::{sync::Arc, time::Duration};
+
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use tokio::sync::{broadcast, RwLock};
 
 use self::termination::{Interrupted, Terminator};
 
@@ -21,6 +24,8 @@ pub(crate) struct App {
     pub(crate) input_mode: InputMode,
     /// History of recorded messages
     pub(crate) messages: Vec<String>,
+    /// Timer since app was open
+    pub(crate) timer: usize,
 }
 
 impl App {
@@ -31,6 +36,7 @@ impl App {
             input_mode: InputMode::Normal,
             messages: Vec::new(),
             cursor_position: 0,
+            timer: 0,
         }
     }
 
@@ -69,6 +75,10 @@ impl App {
             },
             _ => {}
         }
+    }
+
+    fn increment_timer(&mut self) {
+        self.timer += 1;
     }
 
     fn move_cursor_left(&mut self) {
@@ -122,4 +132,28 @@ impl App {
         self.input.clear();
         self.reset_cursor();
     }
+}
+
+pub(crate) async fn main_loop(
+    mut interrupt_rx: broadcast::Receiver<Interrupted>,
+    app: Arc<RwLock<App>>,
+) -> anyhow::Result<Interrupted> {
+    let mut ticker = tokio::time::interval(Duration::from_secs(1));
+
+    let result = loop {
+        tokio::select! {
+            // Tick to terminate the select every N milliseconds
+            _ = ticker.tick() => {
+                let mut app = app.write().await;
+
+                app.increment_timer();
+            },
+            // Catch and handle interrupt signal to gracefully shutdown
+            Ok(interrupted) = interrupt_rx.recv() => {
+                break interrupted;
+            }
+        }
+    };
+
+    Ok(result)
 }
