@@ -1,6 +1,6 @@
 use ratatui::{prelude::*, widgets::*};
 
-use crate::state::{App, InputMode};
+use crate::app::{App, InputMode};
 
 pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) {
     let [left, middle, right] = *Layout::default()

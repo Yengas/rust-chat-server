@@ -1,12 +1,18 @@
-use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
+use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
-pub enum InputMode {
+use self::termination::{Interrupted, Terminator};
+
+pub(crate) mod termination;
+
+pub(crate) enum InputMode {
     Normal,
     Editing,
 }
 
 /// App holds the state of the application
-pub struct App {
+pub(crate) struct App {
+    /// Terminator is used to send the kill signal to the application
+    terminator: Terminator,
     /// Current value of the input box
     pub(crate) input: String,
     /// Position of cursor in the editor area.
@@ -17,33 +23,28 @@ pub struct App {
     pub(crate) messages: Vec<String>,
 }
 
-impl Default for App {
-    fn default() -> App {
+impl App {
+    pub fn new(terminator: Terminator) -> App {
         App {
+            terminator,
             input: String::new(),
             input_mode: InputMode::Normal,
             messages: Vec::new(),
             cursor_position: 0,
         }
     }
-}
 
-impl App {
-    pub(crate) fn handle_event(&mut self, key: KeyEvent) -> anyhow::Result<()> {
+    pub(crate) fn handle_key_event(&mut self, key: KeyEvent) {
         match self.input_mode {
             InputMode::Normal => match key.code {
                 KeyCode::Char('e') => {
                     self.input_mode = InputMode::Editing;
                 }
                 KeyCode::Char('q') => {
-                    return Err(anyhow::anyhow!("Quit"));
+                    let _ = self.terminator.terminate(Interrupted::UserInt);
                 }
-                KeyCode::Char('c')
-                    if key
-                        .modifiers
-                        .contains(crossterm::event::KeyModifiers::CONTROL) =>
-                {
-                    return Err(anyhow::anyhow!("Quit"));
+                KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    let _ = self.terminator.terminate(Interrupted::UserInt);
                 }
                 _ => {}
             },
@@ -68,8 +69,6 @@ impl App {
             },
             _ => {}
         }
-
-        Ok(())
     }
 
     fn move_cursor_left(&mut self) {
