@@ -30,10 +30,10 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
             panic!("The left layout should have 2 chunks")
         };
 
-    let room_list: Vec<ListItem> = vec!["#test", "#room1", "#room2"]
+    let room_list: Vec<ListItem> = vec!["test", "room1", "room2"]
         .iter()
         .map(|room_name| {
-            let content = Line::from(Span::raw(format!("{room_name}")));
+            let content = Line::from(Span::raw(format!("#{room_name}")));
 
             ListItem::new(content)
         })
@@ -141,7 +141,12 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
     frame.render_widget(room_users_list, container_room_users);
 
     let mut usage_text = Text::from(vec![
-        Line::from(vec!["(q)".bold(), " to exit".into()]),
+        Line::from(vec![
+            "(Ctrl + C)".bold(),
+            " or ".into(),
+            "(q)".bold(),
+            " to exit".into(),
+        ]),
         Line::from(vec!["(e)".bold(), " to start editing".into()]),
     ]);
     usage_text.patch_style(Style::default().add_modifier(Modifier::RAPID_BLINK));

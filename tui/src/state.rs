@@ -38,6 +38,13 @@ impl App {
                 KeyCode::Char('q') => {
                     return Err(anyhow::anyhow!("Quit"));
                 }
+                KeyCode::Char('c')
+                    if key
+                        .modifiers
+                        .contains(crossterm::event::KeyModifiers::CONTROL) =>
+                {
+                    return Err(anyhow::anyhow!("Quit"));
+                }
                 _ => {}
             },
             InputMode::Editing if key.kind == KeyEventKind::Press => match key.code {
