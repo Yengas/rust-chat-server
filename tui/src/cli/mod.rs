@@ -34,7 +34,7 @@ pub(crate) async fn main_loop(
             Some(Ok(Event::Key(key))) = crossterm_events.next() => {
                 let mut app = app.write().await;
 
-                app.handle_key_event(key);
+                app.handle_key_event(key).await;
             }
             // Catch and handle interrupt signal to gracefully shutdown
             Ok(interrupted) = interrupt_rx.recv() => {

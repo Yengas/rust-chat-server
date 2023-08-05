@@ -1,7 +1,10 @@
 use std::{sync::Arc, time::Duration};
 
+use comms::command;
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use tokio::sync::{broadcast, RwLock};
+
+use crate::client::Client;
 
 use self::termination::{Interrupted, Terminator};
 
@@ -14,6 +17,8 @@ pub(crate) enum InputMode {
 
 /// App holds the state of the application
 pub(crate) struct App {
+    /// Client is used to send commands
+    client: Client,
     /// Terminator is used to send the kill signal to the application
     terminator: Terminator,
     /// Current value of the input box
@@ -29,8 +34,9 @@ pub(crate) struct App {
 }
 
 impl App {
-    pub fn new(terminator: Terminator) -> App {
+    pub fn new(client: Client, terminator: Terminator) -> App {
         App {
+            client,
             terminator,
             input: String::new(),
             input_mode: InputMode::Normal,
@@ -40,7 +46,7 @@ impl App {
         }
     }
 
-    pub(crate) fn handle_key_event(&mut self, key: KeyEvent) {
+    pub(crate) async fn handle_key_event(&mut self, key: KeyEvent) {
         match self.input_mode {
             InputMode::Normal => match key.code {
                 KeyCode::Char('e') => {
@@ -55,7 +61,7 @@ impl App {
                 _ => {}
             },
             InputMode::Editing if key.kind == KeyEventKind::Press => match key.code {
-                KeyCode::Enter => self.submit_message(),
+                KeyCode::Enter => self.submit_message().await,
                 KeyCode::Char(to_insert) => {
                     self.enter_char(to_insert);
                 }
@@ -75,6 +81,11 @@ impl App {
             },
             _ => {}
         }
+    }
+
+    fn handle_server_event(&mut self, event: &comms::event::Event) {
+        self.messages
+            .push(format!("{:?}", serde_json::to_string(&event)));
     }
 
     fn increment_timer(&mut self) {
@@ -127,8 +138,18 @@ impl App {
         self.cursor_position = 0;
     }
 
-    fn submit_message(&mut self) {
-        self.messages.push(self.input.clone());
+    async fn submit_message(&mut self) {
+        // TODO: handle the promise
+        let _ = self
+            .client
+            .send_command(&command::UserCommand::SendMessage(
+                command::SendMessageCommand {
+                    room: "room1".to_string(),
+                    content: self.input.clone(),
+                },
+            ))
+            .await;
+
         self.input.clear();
         self.reset_cursor();
     }
@@ -136,9 +157,11 @@ impl App {
 
 pub(crate) async fn main_loop(
     mut interrupt_rx: broadcast::Receiver<Interrupted>,
+    mut client: Client,
     app: Arc<RwLock<App>>,
 ) -> anyhow::Result<Interrupted> {
     let mut ticker = tokio::time::interval(Duration::from_secs(1));
+    let mut event_stream = client.event_stream();
 
     let result = loop {
         tokio::select! {
@@ -148,6 +171,11 @@ pub(crate) async fn main_loop(
 
                 app.increment_timer();
             },
+            Ok(event) = event_stream.recv() => {
+                let mut app = app.write().await;
+
+                app.handle_server_event(&event);
+            }
             // Catch and handle interrupt signal to gracefully shutdown
             Ok(interrupted) = interrupt_rx.recv() => {
                 break interrupted;
