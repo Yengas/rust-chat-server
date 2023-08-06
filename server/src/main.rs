@@ -4,38 +4,15 @@ use comms::{
     event::{Event, RoomParticipationEvent},
 };
 use tokio::{
-    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
-    net::{tcp::WriteHalf, TcpListener},
+    net::TcpListener,
     signal::unix::{signal, SignalKind},
     sync::broadcast,
     task::JoinSet,
 };
-use tokio_stream::{wrappers::LinesStream, StreamExt};
+
+mod session;
 
 const PORT: u16 = 8080;
-const NEW_LINE: &[u8; 2] = b"\r\n";
-
-struct EventWriter<'a> {
-    writer: WriteHalf<'a>,
-}
-
-impl<'a> EventWriter<'a> {
-    fn new(writer: WriteHalf<'a>) -> Self {
-        Self { writer }
-    }
-
-    async fn write_event(&mut self, event: &Event) -> anyhow::Result<()> {
-        let mut serialized_bytes = serde_json::to_vec(&event).unwrap();
-        serialized_bytes.extend_from_slice(NEW_LINE);
-
-        self.writer
-            .write_all(serialized_bytes.as_slice())
-            .await
-            .context("failed to write event to socket")?;
-
-        Ok(())
-    }
-}
 
 #[tokio::main]
 async fn main() {
@@ -56,43 +33,8 @@ async fn main() {
                 quit_tx.send(()).context("failed to send quit signal").unwrap();
                 break;
             }
-            Ok((mut socket, _)) = server.accept() => {
-                let mut quit_rx = quit_rx.resubscribe();
-
-                join_set.spawn(async move {
-                    let (reader, writer) = socket.split();
-                    let mut lines = LinesStream::new(BufReader::new(reader).lines()).map(|line| {
-                        line.map(|line| {
-                            serde_json::from_str::<UserCommand>(&line)
-                                .expect("failed to deserialize user command from client")
-                        })
-                    });
-                    let mut event_writer = EventWriter::new(writer);
-
-                    loop {
-                        tokio::select! {
-                            cmd = lines.next() => {
-                                if cmd.is_none() {
-                                    println!("Client disconnected.");
-                                    break;
-                                }
-
-                                println!("Received command: {:?}", cmd);
-
-                                event_writer.write_event(&Event::RoomParticipation(RoomParticipationEvent{
-                                    room: "test".to_string(),
-                                    username: "test".to_string(),
-                                    status: comms::event::RoomParticipationStatus::Joined,
-                                })).await.expect("failed to write event to socket");
-                            }
-                            Ok(_) = quit_rx.recv() => {
-                                socket.shutdown().await.expect("failed to shutdown socket");
-                                println!("Gracefully shutting down user socket.");
-                                break;
-                            }
-                        }
-                    }
-                });
+            Ok((socket, _)) = server.accept() => {
+                join_set.spawn(session::handle_user_session(quit_rx.resubscribe(), socket));
             }
         }
     }
