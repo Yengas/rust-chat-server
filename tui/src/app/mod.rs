@@ -1,6 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use comms::command;
+use comms::{command, event::UserMessageEvent};
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use tokio::sync::{broadcast, RwLock};
 
@@ -28,7 +28,7 @@ pub(crate) struct App {
     /// Current input mode
     pub(crate) input_mode: InputMode,
     /// History of recorded messages
-    pub(crate) messages: Vec<String>,
+    pub(crate) messages: Vec<UserMessageEvent>,
     /// Timer since app was open
     pub(crate) timer: usize,
 }
@@ -84,8 +84,12 @@ impl App {
     }
 
     fn handle_server_event(&mut self, event: &comms::event::Event) {
-        self.messages
-            .push(format!("{:?}", serde_json::to_string(&event)));
+        match event {
+            comms::event::Event::UserMessage(user_message) => {
+                self.messages.push(user_message.clone());
+            }
+            _ => {}
+        }
     }
 
     fn increment_timer(&mut self) {

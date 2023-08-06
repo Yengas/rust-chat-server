@@ -83,9 +83,8 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
     let messages: Vec<ListItem> = app
         .messages
         .iter()
-        .enumerate()
-        .map(|(i, m)| {
-            let content = Line::from(Span::raw(format!("{i}: {m}")));
+        .map(|event| {
+            let content = Line::from(Span::raw(format!("@{}: {}", event.username, event.content)));
             ListItem::new(content)
         })
         .collect();
