@@ -1,5 +1,27 @@
 use serde::{Deserialize, Serialize};
 
+/// The detail of a given room
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RoomDetail {
+    /// The slug of the room
+    #[serde(rename = "n")]
+    pub name: String,
+    /// The description of the room
+    #[serde(rename = "d")]
+    pub description: String,
+}
+
+/// A user has successfully logged in
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LoginSuccessfulEvent {
+    /// The username of the user that has logged in
+    #[serde(rename = "u")]
+    pub username: String,
+    /// The list of rooms the user can participate
+    #[serde(rename = "rs")]
+    pub rooms: Vec<RoomDetail>,
+}
+
 /// Users new room participation status
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -37,10 +59,11 @@ pub struct UserMessageEvent {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "t", rename_all = "snake_case")]
+#[serde(tag = "_et", rename_all = "snake_case")]
 /// Events that can be sent to the client
 /// Events maybe related to different users and rooms, the receipient is a single chat session
 pub enum Event {
+    LoginSuccessful(LoginSuccessfulEvent),
     RoomParticipation(RoomParticipationEvent),
     UserMessage(UserMessageEvent),
 }
@@ -58,6 +81,22 @@ mod tests {
     }
 
     #[test]
+    fn test_login_successful_event() {
+        let event = Event::LoginSuccessful(LoginSuccessfulEvent {
+            username: "test".to_string(),
+            rooms: vec![RoomDetail {
+                name: "room1".to_string(),
+                description: "some description".to_string(),
+            }],
+        });
+
+        assert_event_serialization(
+            &event,
+            r#"{"_et":"login_successful","u":"test","rs":[{"n":"room1","d":"some description"}]}"#,
+        );
+    }
+
+    #[test]
     fn test_room_participation_join_event() {
         let event = Event::RoomParticipation(RoomParticipationEvent {
             room: "test".to_string(),
@@ -67,7 +106,7 @@ mod tests {
 
         assert_event_serialization(
             &event,
-            r#"{"t":"room_participation","r":"test","u":"test","s":"joined"}"#,
+            r#"{"_et":"room_participation","r":"test","u":"test","s":"joined"}"#,
         );
     }
 
@@ -81,7 +120,7 @@ mod tests {
 
         assert_event_serialization(
             &event,
-            r#"{"t":"room_participation","r":"test","u":"test","s":"left"}"#,
+            r#"{"_et":"room_participation","r":"test","u":"test","s":"left"}"#,
         );
     }
 
@@ -95,7 +134,7 @@ mod tests {
 
         assert_event_serialization(
             &event,
-            r#"{"t":"user_message","r":"test","u":"test","c":"test"}"#,
+            r#"{"_et":"user_message","r":"test","u":"test","c":"test"}"#,
         );
     }
 }

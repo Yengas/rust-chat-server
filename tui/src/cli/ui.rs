@@ -1,6 +1,6 @@
 use ratatui::{prelude::*, widgets::*};
 
-use crate::app::{App, InputMode};
+use crate::app::{App, InputMode, MessageBoxItem};
 
 pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) {
     let [left, middle, right] = *Layout::default()
@@ -30,10 +30,11 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
             panic!("The left layout should have 2 chunks")
         };
 
-    let room_list: Vec<ListItem> = vec!["test", "room1", "room2"]
+    let room_list: Vec<ListItem> = app
+        .rooms
         .iter()
-        .map(|room_name| {
-            let content = Line::from(Span::raw(format!("#{room_name}")));
+        .map(|room_state| {
+            let content = Line::from(Span::raw(format!("#{}", room_state.name)));
 
             ListItem::new(content)
         })
@@ -43,7 +44,7 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
     frame.render_widget(room_list, container_room_list);
 
     let user_info = Paragraph::new(Text::from(vec![
-        Line::from("User: @jjohndoejohndoejohndoejohndoejohndoeohndoe"),
+        Line::from(format!("User: @{}", app.username)),
         Line::from(format!("Seconds in app: {}", app.timer)),
     ]))
     .block(
@@ -67,12 +68,18 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
             panic!("The middle layout should have 3 chunks")
         };
 
-    let text = Text::from(Line::from(vec![
-        "on ".into(),
-        "#room1".bold(),
-        " for ".into(),
-        "interesting talks about life".italic(),
-    ]));
+    let top_line = if let Some(active_room) = app.rooms.iter().find(|r| r.name == app.active_room) {
+        Line::from(vec![
+            "on ".into(),
+            Span::from(format!("#{}", active_room.name)).bold(),
+            " for ".into(),
+            Span::from(format!(r#""{}""#, active_room.description)).italic(),
+        ])
+    } else {
+        Line::from("Please select a room.")
+    };
+    let text = Text::from(top_line);
+
     let help_message = Paragraph::new(text).block(
         Block::default()
             .borders(Borders::ALL)
@@ -80,14 +87,27 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
     );
     frame.render_widget(help_message, container_highlight);
 
-    let messages: Vec<ListItem> = app
+    let messages = app
         .messages
-        .iter()
-        .map(|event| {
-            let content = Line::from(Span::raw(format!("@{}: {}", event.username, event.content)));
-            ListItem::new(content)
+        .get(&app.active_room)
+        .map(|messages| {
+            messages
+                .iter()
+                .map(|mbi| {
+                    let line = match mbi {
+                        MessageBoxItem::Message { username, content } => {
+                            Line::from(Span::raw(format!("@{}: {}", username, content)))
+                        }
+                        MessageBoxItem::Notification(content) => {
+                            Line::from(Span::raw(content).italic())
+                        }
+                    };
+
+                    ListItem::new(line)
+                })
+                .collect::<Vec<ListItem>>()
         })
-        .collect();
+        .unwrap_or_default();
     let messages =
         List::new(messages).block(Block::default().borders(Borders::ALL).title("Messages"));
     frame.render_widget(messages, container_messages);

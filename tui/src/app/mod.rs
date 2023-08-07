@@ -1,10 +1,14 @@
-use std::{sync::Arc, time::Duration};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
-use comms::{command, event::UserMessageEvent};
+use comms::{command, event};
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
-use tokio::sync::{broadcast, RwLock};
+use tokio::{
+    net::tcp::OwnedWriteHalf,
+    sync::{broadcast, RwLock},
+};
+use tokio_stream::StreamExt;
 
-use crate::client::Client;
+use crate::client::{BoxedStream, CommandWriter};
 
 use self::termination::{Interrupted, Terminator};
 
@@ -15,12 +19,39 @@ pub(crate) enum InputMode {
     Editing,
 }
 
+pub(crate) struct RoomState {
+    pub(crate) name: String,
+    pub(crate) description: String,
+    pub(crate) joined: bool,
+}
+
+impl RoomState {
+    pub(crate) fn new(name: String, description: String, joined: bool) -> RoomState {
+        RoomState {
+            name,
+            description,
+            joined,
+        }
+    }
+}
+
+pub(crate) enum MessageBoxItem {
+    Message { username: String, content: String },
+    Notification(String),
+}
+
 /// App holds the state of the application
 pub(crate) struct App {
-    /// Client is used to send commands
-    client: Client,
+    /// Command Writer is used to send commands
+    command_writer: CommandWriter<OwnedWriteHalf>,
     /// Terminator is used to send the kill signal to the application
     terminator: Terminator,
+    /// The name of the user
+    pub(crate) username: String,
+    /// The list of rooms the user can participate in and their status
+    pub(crate) rooms: Vec<RoomState>,
+    // The active room which the user has selected
+    pub(crate) active_room: String,
     /// Current value of the input box
     pub(crate) input: String,
     /// Position of cursor in the editor area.
@@ -28,19 +59,22 @@ pub(crate) struct App {
     /// Current input mode
     pub(crate) input_mode: InputMode,
     /// History of recorded messages
-    pub(crate) messages: Vec<UserMessageEvent>,
+    pub(crate) messages: HashMap<String, Vec<MessageBoxItem>>,
     /// Timer since app was open
     pub(crate) timer: usize,
 }
 
 impl App {
-    pub fn new(client: Client, terminator: Terminator) -> App {
+    pub fn new(command_writer: CommandWriter<OwnedWriteHalf>, terminator: Terminator) -> App {
         App {
-            client,
+            command_writer,
             terminator,
+            username: String::new(),
+            active_room: String::from("general"),
+            rooms: Vec::new(),
             input: String::new(),
             input_mode: InputMode::Normal,
-            messages: Vec::new(),
+            messages: HashMap::new(),
             cursor_position: 0,
             timer: 0,
         }
@@ -83,12 +117,58 @@ impl App {
         }
     }
 
-    fn handle_server_event(&mut self, event: &comms::event::Event) {
+    fn handle_server_event(&mut self, event: &event::Event) {
         match event {
-            comms::event::Event::UserMessage(user_message) => {
-                self.messages.push(user_message.clone());
+            event::Event::LoginSuccessful(event) => {
+                self.username = event.username.clone();
+                self.rooms = event
+                    .rooms
+                    .clone()
+                    .into_iter()
+                    .map(|r| RoomState::new(r.name, r.description, false))
+                    .collect();
+                self.messages = event
+                    .rooms
+                    .clone()
+                    .into_iter()
+                    .map(|r| (r.name, Vec::new()))
+                    .collect();
             }
-            _ => {}
+            event::Event::RoomParticipation(event) => {
+                if event.username == self.username {
+                    let room = self
+                        .rooms
+                        .iter_mut()
+                        .find(|r| r.name == event.room)
+                        .expect("room not found");
+
+                    room.joined = match event.status {
+                        event::RoomParticipationStatus::Joined => true,
+                        event::RoomParticipationStatus::Left => false,
+                    };
+                }
+
+                self.messages
+                    .get_mut(&event.room)
+                    .unwrap()
+                    .push(MessageBoxItem::Notification(format!(
+                        "{} has {} the room",
+                        event.username,
+                        match event.status {
+                            event::RoomParticipationStatus::Joined => "joined",
+                            event::RoomParticipationStatus::Left => "left",
+                        }
+                    )));
+            }
+            event::Event::UserMessage(event) => {
+                self.messages
+                    .get_mut(&event.room)
+                    .unwrap()
+                    .push(MessageBoxItem::Message {
+                        username: event.username.clone(),
+                        content: event.content.clone(),
+                    });
+            }
         }
     }
 
@@ -145,8 +225,8 @@ impl App {
     async fn submit_message(&mut self) {
         // TODO: handle the promise
         let _ = self
-            .client
-            .send_command(&command::UserCommand::SendMessage(
+            .command_writer
+            .write(&command::UserCommand::SendMessage(
                 command::SendMessageCommand {
                     room: "general".to_string(),
                     content: self.input.clone(),
@@ -161,25 +241,24 @@ impl App {
 
 pub(crate) async fn main_loop(
     mut interrupt_rx: broadcast::Receiver<Interrupted>,
-    mut client: Client,
+    mut event_stream: BoxedStream<anyhow::Result<event::Event>>,
     app: Arc<RwLock<App>>,
 ) -> anyhow::Result<Interrupted> {
     let mut ticker = tokio::time::interval(Duration::from_secs(1));
-    let mut event_stream = client.event_stream();
 
     let result = loop {
         tokio::select! {
+            Some(Ok(event)) = event_stream.next() => {
+                let mut app = app.write().await;
+
+                app.handle_server_event(&event);
+            }
             // Tick to terminate the select every N milliseconds
             _ = ticker.tick() => {
                 let mut app = app.write().await;
 
                 app.increment_timer();
             },
-            Ok(event) = event_stream.recv() => {
-                let mut app = app.write().await;
-
-                app.handle_server_event(&event);
-            }
             // Catch and handle interrupt signal to gracefully shutdown
             Ok(interrupted) = interrupt_rx.recv() => {
                 break interrupted;

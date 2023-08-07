@@ -1,62 +1,53 @@
-use std::sync::Arc;
+use std::pin::Pin;
 
-use comms::{command, event};
+use anyhow::Context;
 use tokio::{
-    net::TcpStream,
-    sync::{broadcast, mpsc, oneshot},
-    task::JoinSet,
+    io::{AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader},
+    net::{tcp::OwnedWriteHalf, TcpStream},
 };
-use tokio_stream::StreamExt;
+use tokio_stream::{wrappers::LinesStream, Stream, StreamExt};
 
-mod raw_client;
+const NEW_LINE: &[u8; 2] = b"\r\n";
 
-#[derive(Debug, Clone)]
-pub struct Client {
-    _join_set: Arc<JoinSet<()>>,
-    event_broadcast_rx: Arc<broadcast::Receiver<event::Event>>,
-    command_mpsc_tx: mpsc::Sender<(oneshot::Sender<anyhow::Result<()>>, command::UserCommand)>,
+pub type BoxedStream<Item> = Pin<Box<dyn Stream<Item = Item> + Send>>;
+
+pub struct CommandWriter<W: AsyncWrite + Unpin> {
+    writer: W,
 }
 
-impl Client {
-    pub async fn new(url: &str) -> anyhow::Result<Self> {
-        let stream = TcpStream::connect(url).await?;
-        let (mut event_stream, mut command_writer) = raw_client::split_stream(stream);
-
-        let mut join_set = JoinSet::new();
-        let (event_broadcast_tx, event_broadcast_rx) = broadcast::channel(100);
-        let (command_mpsc_tx, mut command_mpsc_rx) =
-            mpsc::channel::<(oneshot::Sender<anyhow::Result<()>>, command::UserCommand)>(100);
-
-        join_set.spawn(async move {
-            while let Some(Ok(event)) = event_stream.as_mut().next().await {
-                let _ = event_broadcast_tx.send(event);
-            }
-        });
-
-        join_set.spawn({
-            async move {
-                while let Some((tx, command)) = command_mpsc_rx.recv().await {
-                    let result = command_writer.write(&command).await;
-                    let _ = tx.send(result);
-                }
-            }
-        });
-
-        Ok(Self {
-            _join_set: Arc::new(join_set),
-            event_broadcast_rx: Arc::new(event_broadcast_rx),
-            command_mpsc_tx,
-        })
+impl<W: AsyncWrite + Unpin> CommandWriter<W> {
+    pub fn new(writer: W) -> Self {
+        Self { writer }
     }
 
-    pub async fn send_command(&mut self, command: &command::UserCommand) -> anyhow::Result<()> {
-        let (tx, rx) = oneshot::channel();
-        self.command_mpsc_tx.send((tx, command.clone())).await?;
+    pub async fn write(&mut self, command: &comms::command::UserCommand) -> anyhow::Result<()> {
+        let mut serialized_bytes = serde_json::to_vec(command)?;
+        serialized_bytes.extend_from_slice(NEW_LINE);
 
-        rx.await?
-    }
+        self.writer.write_all(serialized_bytes.as_slice()).await?;
 
-    pub fn event_stream(&mut self) -> broadcast::Receiver<event::Event> {
-        self.event_broadcast_rx.resubscribe()
+        Ok(())
     }
+}
+
+pub fn split_stream(
+    stream: TcpStream,
+) -> (
+    BoxedStream<anyhow::Result<comms::event::Event>>,
+    CommandWriter<OwnedWriteHalf>,
+) {
+    let (reader, writer) = stream.into_split();
+
+    (
+        Box::pin(
+            LinesStream::new(BufReader::new(reader).lines()).map(|line| {
+                line.map(|line| {
+                    serde_json::from_str::<comms::event::Event>(&line)
+                        .expect("failed to deserialize event from server")
+                })
+                .context("could not read line from server")
+            }),
+        ),
+        CommandWriter::new(writer),
+    )
 }

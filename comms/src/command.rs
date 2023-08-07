@@ -42,7 +42,7 @@ pub struct QuitCommand;
 /// A user command which can be sent to the server by a single user session.
 /// All commands are processed in the context of the chat server paired with an individual user session.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "t", rename_all = "snake_case")]
+#[serde(tag = "_ct", rename_all = "snake_case")]
 pub enum UserCommand {
     Login(LoginCommand),
     JoinRoom(JoinRoomCommand),
@@ -69,7 +69,7 @@ mod tests {
             username: "test".to_string(),
         });
 
-        assert_command_serialization(&command, r#"{"t":"login","u":"test"}"#);
+        assert_command_serialization(&command, r#"{"_ct":"login","u":"test"}"#);
     }
 
     #[test]
@@ -78,7 +78,7 @@ mod tests {
             room: "test".to_string(),
         });
 
-        assert_command_serialization(&command, r#"{"t":"join_room","r":"test"}"#);
+        assert_command_serialization(&command, r#"{"_ct":"join_room","r":"test"}"#);
     }
 
     #[test]
@@ -87,7 +87,7 @@ mod tests {
             room: "test".to_string(),
         });
 
-        assert_command_serialization(&command, r#"{"t":"leave_room","r":"test"}"#);
+        assert_command_serialization(&command, r#"{"_ct":"leave_room","r":"test"}"#);
     }
 
     #[test]
@@ -97,13 +97,13 @@ mod tests {
             content: "test".to_string(),
         });
 
-        assert_command_serialization(&command, r#"{"t":"send_message","r":"test","c":"test"}"#);
+        assert_command_serialization(&command, r#"{"_ct":"send_message","r":"test","c":"test"}"#);
     }
 
     #[test]
     fn test_quit_command() {
         let command = UserCommand::Quit(QuitCommand);
 
-        assert_command_serialization(&command, r#"{"t":"quit"}"#);
+        assert_command_serialization(&command, r#"{"_ct":"quit"}"#);
     }
 }

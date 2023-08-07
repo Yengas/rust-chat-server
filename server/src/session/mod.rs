@@ -1,13 +1,16 @@
 use std::{collections::HashMap, sync::Arc};
 
-use comms::command::UserCommand;
+use comms::{
+    command::UserCommand,
+    event::{self, RoomDetail},
+};
 use tokio::{
     net::TcpStream,
     sync::{broadcast, Mutex},
 };
 use tokio_stream::StreamExt;
 
-use crate::room::ChatRoom;
+use crate::room::{ChatRoom, ChatRoomMetadata};
 
 use self::room_manager::ChatRoomManager;
 
@@ -15,19 +18,38 @@ mod raw_socket;
 mod room_manager;
 
 pub async fn handle_user_session(
-    chat_rooms: HashMap<String, Arc<Mutex<ChatRoom>>>,
+    chat_rooms: Vec<(ChatRoomMetadata, Arc<Mutex<ChatRoom>>)>,
     mut quit_rx: broadcast::Receiver<()>,
     stream: TcpStream,
 ) -> anyhow::Result<()> {
-    let username = nanoid::nanoid!();
+    let username = String::from(&nanoid::nanoid!()[0..5]);
     let (mut commands, mut event_writer) = raw_socket::split_stream(stream);
+
+    event_writer
+        .write(&event::Event::LoginSuccessful(
+            event::LoginSuccessfulEvent {
+                username: username.clone(),
+                rooms: chat_rooms
+                    .iter()
+                    .map(|(metadata, _)| RoomDetail {
+                        name: metadata.name.clone(),
+                        description: metadata.description.clone(),
+                    })
+                    .collect(),
+            },
+        ))
+        .await?;
+
+    let chat_rooms = chat_rooms
+        .into_iter()
+        .map(|(metadata, room)| (metadata.name, room))
+        .collect::<HashMap<_, _>>();
     let mut room_manager = ChatRoomManager::new(&username, chat_rooms);
 
     loop {
         tokio::select! {
             cmd = commands.next() => match cmd {
                 None | Some(Ok(UserCommand::Quit(_))) => {
-                    println!("Client quit.");
                     room_manager.leave_all_rooms().await?;
                     break;
                 }

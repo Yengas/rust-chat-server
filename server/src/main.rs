@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use anyhow::Context;
 use tokio::{
@@ -8,7 +8,7 @@ use tokio::{
     task::JoinSet,
 };
 
-use crate::room::ChatRoom;
+use crate::room::{ChatRoom, ChatRoomMetadata};
 
 mod room;
 mod session;
@@ -18,21 +18,23 @@ const PORT: u16 = 8080;
 #[tokio::main]
 async fn main() {
     let mut join_set: JoinSet<anyhow::Result<()>> = JoinSet::new();
-    let chat_rooms: HashMap<String, Arc<Mutex<ChatRoom>>> = vec![
-        (
-            String::from("general"),
-            Arc::new(Mutex::new(ChatRoom::new(
+    let chat_rooms: Vec<(ChatRoomMetadata, Arc<Mutex<ChatRoom>>)> = vec![
+        {
+            let metadata = ChatRoomMetadata::new(
                 "general",
                 "talking about topics which do not fall into any other room",
-            ))),
-        ),
-        (
-            String::from("rust"),
-            Arc::new(Mutex::new(ChatRoom::new(
-                "rust",
-                "talking about the Rust programming language",
-            ))),
-        ),
+            );
+            let chat_room = Arc::new(Mutex::new(ChatRoom::new(&metadata)));
+
+            (metadata, chat_room)
+        },
+        {
+            let metadata =
+                ChatRoomMetadata::new("rust", "talking about the Rust programming language");
+            let chat_room = Arc::new(Mutex::new(ChatRoom::new(&metadata)));
+
+            (metadata, chat_room)
+        },
     ]
     .into_iter()
     .collect();
