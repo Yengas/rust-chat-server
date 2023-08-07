@@ -1,5 +1,6 @@
 use app::{termination::create_termination, App};
 use client::Client;
+use comms::command;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -9,9 +10,17 @@ mod client;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let client = Client::new("localhost:8080").await?;
+    let mut client = Client::new("localhost:8080").await?;
     let (terminator, interrupt_rx) = create_termination();
     let app = Arc::new(RwLock::new(App::new(client.clone(), terminator.clone())));
+
+    {
+        client
+            .send_command(&command::UserCommand::JoinRoom(command::JoinRoomCommand {
+                room: "general".to_string(),
+            }))
+            .await?;
+    }
 
     tokio::try_join!(
         cli::main_loop(interrupt_rx.resubscribe(), app.clone()),

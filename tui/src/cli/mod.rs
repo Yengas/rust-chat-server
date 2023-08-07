@@ -42,9 +42,11 @@ pub(crate) async fn main_loop(
             }
         }
 
-        let app = app.read().await;
+        {
+            let app = app.read().await;
 
-        terminal.draw(|frame| ui::render_app_too_frame(frame, &app))?;
+            terminal.draw(|frame| ui::render_app_too_frame(frame, &app))?;
+        }
     };
 
     restore_terminal(&mut terminal)?;

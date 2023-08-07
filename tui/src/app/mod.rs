@@ -148,7 +148,7 @@ impl App {
             .client
             .send_command(&command::UserCommand::SendMessage(
                 command::SendMessageCommand {
-                    room: "room1".to_string(),
+                    room: "general".to_string(),
                     content: self.input.clone(),
                 },
             ))
