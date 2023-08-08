@@ -11,6 +11,7 @@ const NEW_LINE: &[u8; 2] = b"\r\n";
 
 pub type BoxedStream<Item> = Pin<Box<dyn Stream<Item = Item> + Send>>;
 
+/// CommandWriter is a wrapper around a TcpStream which writes UserCommands' to the server
 pub struct CommandWriter<W: AsyncWrite + Unpin> {
     writer: W,
 }
@@ -20,6 +21,7 @@ impl<W: AsyncWrite + Unpin> CommandWriter<W> {
         Self { writer }
     }
 
+    /// Serialize a UserCommand and send it to the server
     pub async fn write(&mut self, command: &comms::command::UserCommand) -> anyhow::Result<()> {
         let mut serialized_bytes = serde_json::to_vec(command)?;
         serialized_bytes.extend_from_slice(NEW_LINE);
@@ -30,6 +32,7 @@ impl<W: AsyncWrite + Unpin> CommandWriter<W> {
     }
 }
 
+/// Split a TcpStream into a stream of Events and a CommandWriter
 pub fn split_stream(
     stream: TcpStream,
 ) -> (

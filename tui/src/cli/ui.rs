@@ -1,6 +1,6 @@
 use ratatui::{prelude::*, widgets::*};
 
-use crate::app::{App, InputMode, MessageBoxItem};
+use crate::app::{App, MessageBoxItem, Section};
 
 pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) {
     let [left, middle, right] = *Layout::default()
@@ -68,7 +68,11 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
             panic!("The middle layout should have 3 chunks")
         };
 
-    let top_line = if let Some(active_room) = app.rooms.iter().find(|r| r.name == app.active_room) {
+    let top_line = if let Some(active_room) = app
+        .active_room
+        .as_ref()
+        .and_then(|active_room| app.rooms.iter().find(|r| r.name.eq(active_room)))
+    {
         Line::from(vec![
             "on ".into(),
             Span::from(format!("#{}", active_room.name)).bold(),
@@ -87,50 +91,58 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
     );
     frame.render_widget(help_message, container_highlight);
 
-    let messages = app
-        .messages
-        .get(&app.active_room)
-        .map(|messages| {
-            messages
-                .iter()
-                .map(|mbi| {
-                    let line = match mbi {
-                        MessageBoxItem::Message { username, content } => {
-                            Line::from(Span::raw(format!("@{}: {}", username, content)))
-                        }
-                        MessageBoxItem::Notification(content) => {
-                            Line::from(Span::raw(content).italic())
-                        }
-                    };
+    let messages = if let Some(active_room) = app.active_room.as_ref() {
+        app.messages
+            .get(active_room)
+            .map(|messages| {
+                messages
+                    .iter()
+                    .map(|mbi| {
+                        let line = match mbi {
+                            MessageBoxItem::Message { username, content } => {
+                                Line::from(Span::raw(format!("@{}: {}", username, content)))
+                            }
+                            MessageBoxItem::Notification(content) => {
+                                Line::from(Span::raw(content).italic())
+                            }
+                        };
 
-                    ListItem::new(line)
-                })
-                .collect::<Vec<ListItem>>()
-        })
-        .unwrap_or_default();
+                        ListItem::new(line)
+                    })
+                    .collect::<Vec<ListItem>>()
+            })
+            .unwrap_or_default()
+    } else {
+        vec![ListItem::new(Line::from("Please select a room."))]
+    };
     let messages =
         List::new(messages).block(Block::default().borders(Borders::ALL).title("Messages"));
     frame.render_widget(messages, container_messages);
 
-    let input = Paragraph::new(app.input.as_str())
-        .style(match app.input_mode {
-            InputMode::Normal => Style::default(),
-            InputMode::Editing => Style::default().fg(Color::Yellow),
+    let is_selected = match app.active_section.as_ref() {
+        Some(Section::MessageInput) => true,
+        _ => false,
+    };
+    let input = Paragraph::new(app.input.input.as_str())
+        .style(if is_selected {
+            Style::default().fg(Color::Yellow)
+        } else {
+            Style::default()
         })
         .block(Block::default().borders(Borders::ALL).title("Input"));
     frame.render_widget(input, container_input);
-    match app.input_mode {
-        InputMode::Normal =>
+    match is_selected {
+        false =>
             // Hide the cursor. `Frame` does this by default, so we don't need to do anything here
             {}
 
-        InputMode::Editing => {
+        true => {
             // Make the cursor visible and ask ratatui to put it at the specified coordinates after
             // rendering
             frame.set_cursor(
                 // Draw the cursor at the current position in the input field.
                 // This position is can be controlled via the left and right arrow key
-                container_input.x + app.cursor_position as u16 + 1,
+                container_input.x + app.input.cursor_position as u16 + 1,
                 // Move one line down, from the border to the input line
                 container_input.y + 1,
             )

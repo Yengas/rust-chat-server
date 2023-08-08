@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc, time::Duration};
 
 use comms::{command, event};
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
@@ -14,9 +14,10 @@ use self::termination::{Interrupted, Terminator};
 
 pub(crate) mod termination;
 
-pub(crate) enum InputMode {
-    Normal,
-    Editing,
+#[derive(Debug, Clone)]
+pub(crate) enum Section {
+    RoomList,
+    MessageInput,
 }
 
 pub(crate) struct RoomState {
@@ -40,24 +41,135 @@ pub(crate) enum MessageBoxItem {
     Notification(String),
 }
 
+pub(crate) struct Input {
+    command_writer: Rc<RefCell<CommandWriter<OwnedWriteHalf>>>,
+    /// Current value of the input box
+    pub(crate) input: String,
+    /// Position of cursor in the editor area.
+    pub(crate) cursor_position: usize,
+}
+
+impl Input {
+    fn new(command_writer: Rc<RefCell<CommandWriter<OwnedWriteHalf>>>) -> Self {
+        Self {
+            command_writer,
+            input: String::new(),
+            cursor_position: 0,
+        }
+    }
+
+    async fn activate(&mut self) {}
+
+    async fn deactivate(&mut self) {
+        self.cursor_position = 0;
+        self.input.clear();
+    }
+
+    async fn handle_key_event(&mut self, key: KeyEvent) {
+        if key.kind != KeyEventKind::Press {
+            return;
+        }
+
+        match key.code {
+            KeyCode::Enter => self.submit_message().await,
+            KeyCode::Char(to_insert) => {
+                self.enter_char(to_insert);
+            }
+            KeyCode::Backspace => {
+                self.delete_char();
+            }
+            KeyCode::Left => {
+                self.move_cursor_left();
+            }
+            KeyCode::Right => {
+                self.move_cursor_right();
+            }
+            _ => {}
+        }
+    }
+
+    async fn submit_message(&mut self) {
+        // TODO: handle the promise
+        let _ = self
+            .command_writer
+            .borrow_mut()
+            .write(&command::UserCommand::SendMessage(
+                command::SendMessageCommand {
+                    room: "general".to_string(),
+                    content: self.input.clone(),
+                },
+            ))
+            .await;
+
+        self.input.clear();
+        self.reset_cursor();
+    }
+
+    fn move_cursor_left(&mut self) {
+        let cursor_moved_left = self.cursor_position.saturating_sub(1);
+        self.cursor_position = self.clamp_cursor(cursor_moved_left);
+    }
+
+    fn move_cursor_right(&mut self) {
+        let cursor_moved_right = self.cursor_position.saturating_add(1);
+        self.cursor_position = self.clamp_cursor(cursor_moved_right);
+    }
+
+    fn enter_char(&mut self, new_char: char) {
+        self.input.insert(self.cursor_position, new_char);
+
+        self.move_cursor_right();
+    }
+
+    fn delete_char(&mut self) {
+        let is_not_cursor_leftmost = self.cursor_position != 0;
+        if is_not_cursor_leftmost {
+            // Method "remove" is not used on the saved text for deleting the selected char.
+            // Reason: Using remove on String works on bytes instead of the chars.
+            // Using remove would require special care because of char boundaries.
+
+            let current_index = self.cursor_position;
+            let from_left_to_current_index = current_index - 1;
+
+            // Getting all characters before the selected character.
+            let before_char_to_delete = self.input.chars().take(from_left_to_current_index);
+            // Getting all characters after selected character.
+            let after_char_to_delete = self.input.chars().skip(current_index);
+
+            // Put all characters together except the selected one.
+            // By leaving the selected one out, it is forgotten and therefore deleted.
+            self.input = before_char_to_delete.chain(after_char_to_delete).collect();
+            self.move_cursor_left();
+        }
+    }
+
+    fn clamp_cursor(&self, new_cursor_pos: usize) -> usize {
+        new_cursor_pos.clamp(0, self.input.len())
+    }
+
+    fn reset_cursor(&mut self) {
+        self.cursor_position = 0;
+    }
+}
+
 /// App holds the state of the application
 pub(crate) struct App {
     /// Command Writer is used to send commands
-    command_writer: CommandWriter<OwnedWriteHalf>,
+    command_writer: Rc<RefCell<CommandWriter<OwnedWriteHalf>>>,
     /// Terminator is used to send the kill signal to the application
     terminator: Terminator,
+    /// Currently active section, handling input
+    pub(crate) active_section: Option<Section>,
+    /// Section that is currently hovered
+    pub(crate) hovered_section: Option<Section>,
     /// The name of the user
     pub(crate) username: String,
     /// The list of rooms the user can participate in and their status
     pub(crate) rooms: Vec<RoomState>,
     // The active room which the user has selected
-    pub(crate) active_room: String,
-    /// Current value of the input box
-    pub(crate) input: String,
-    /// Position of cursor in the editor area.
-    pub(crate) cursor_position: usize,
-    /// Current input mode
-    pub(crate) input_mode: InputMode,
+    pub(crate) active_room: Option<String>,
+    // The widget status
+    pub(crate) input: Input,
     /// History of recorded messages
     pub(crate) messages: HashMap<String, Vec<MessageBoxItem>>,
     /// Timer since app was open
@@ -65,27 +177,43 @@ pub(crate) struct App {
 }
 
 impl App {
-    pub fn new(command_writer: CommandWriter<OwnedWriteHalf>, terminator: Terminator) -> App {
+    pub fn new(command_writer: CommandWriter<OwnedWriteHalf>, terminator: Terminator) -> Self {
+        let command_writer = Rc::new(RefCell::new(command_writer));
+        let command_writer_2 = Rc::clone(&command_writer);
+
         App {
             command_writer,
             terminator,
+            active_section: Option::None,
+            hovered_section: Option::Some(Section::MessageInput),
+            //
             username: String::new(),
-            active_room: String::from("general"),
+            active_room: Option::None,
             rooms: Vec::new(),
-            input: String::new(),
-            input_mode: InputMode::Normal,
             messages: HashMap::new(),
-            cursor_position: 0,
+            //
+            input: Input::new(command_writer_2),
+            //
             timer: 0,
         }
     }
 
     pub(crate) async fn handle_key_event(&mut self, key: KeyEvent) {
-        match self.input_mode {
-            InputMode::Normal => match key.code {
-                KeyCode::Char('e') => {
-                    self.input_mode = InputMode::Editing;
-                }
+        match self.active_section.as_ref() {
+            None => match key.code {
+                KeyCode::Char('e') => match self.hovered_section.as_ref() {
+                    Some(section) => {
+                        self.active_section = Some(section.clone());
+
+                        let handler = match section {
+                            Section::MessageInput => &mut self.input,
+                            _ => todo!("handle other sections"),
+                        };
+
+                        handler.activate().await;
+                    }
+                    None => (),
+                },
                 KeyCode::Char('q') => {
                     let _ = self.terminator.terminate(Interrupted::UserInt);
                 }
@@ -94,26 +222,25 @@ impl App {
                 }
                 _ => {}
             },
-            InputMode::Editing if key.kind == KeyEventKind::Press => match key.code {
-                KeyCode::Enter => self.submit_message().await,
-                KeyCode::Char(to_insert) => {
-                    self.enter_char(to_insert);
+            Some(section) if key.code == KeyCode::Esc => {
+                match section {
+                    Section::MessageInput => {
+                        self.input.deactivate().await;
+                    }
+                    _ => todo!("handle other sections"),
                 }
-                KeyCode::Backspace => {
-                    self.delete_char();
-                }
-                KeyCode::Left => {
-                    self.move_cursor_left();
-                }
-                KeyCode::Right => {
-                    self.move_cursor_right();
-                }
-                KeyCode::Esc => {
-                    self.input_mode = InputMode::Normal;
-                }
-                _ => {}
-            },
-            _ => {}
+
+                self.active_section = None;
+                self.hovered_section = None;
+            }
+            Some(section) => {
+                let handler = match section {
+                    Section::MessageInput => &mut self.input,
+                    _ => todo!("handle other sections"),
+                };
+
+                handler.handle_key_event(key).await;
+            }
         }
     }
 
@@ -174,68 +301,6 @@ impl App {
 
     fn increment_timer(&mut self) {
         self.timer += 1;
-    }
-
-    fn move_cursor_left(&mut self) {
-        let cursor_moved_left = self.cursor_position.saturating_sub(1);
-        self.cursor_position = self.clamp_cursor(cursor_moved_left);
-    }
-
-    fn move_cursor_right(&mut self) {
-        let cursor_moved_right = self.cursor_position.saturating_add(1);
-        self.cursor_position = self.clamp_cursor(cursor_moved_right);
-    }
-
-    fn enter_char(&mut self, new_char: char) {
-        self.input.insert(self.cursor_position, new_char);
-
-        self.move_cursor_right();
-    }
-
-    fn delete_char(&mut self) {
-        let is_not_cursor_leftmost = self.cursor_position != 0;
-        if is_not_cursor_leftmost {
-            // Method "remove" is not used on the saved text for deleting the selected char.
-            // Reason: Using remove on String works on bytes instead of the chars.
-            // Using remove would require special care because of char boundaries.
-
-            let current_index = self.cursor_position;
-            let from_left_to_current_index = current_index - 1;
-
-            // Getting all characters before the selected character.
-            let before_char_to_delete = self.input.chars().take(from_left_to_current_index);
-            // Getting all characters after selected character.
-            let after_char_to_delete = self.input.chars().skip(current_index);
-
-            // Put all characters together except the selected one.
-            // By leaving the selected one out, it is forgotten and therefore deleted.
-            self.input = before_char_to_delete.chain(after_char_to_delete).collect();
-            self.move_cursor_left();
-        }
-    }
-
-    fn clamp_cursor(&self, new_cursor_pos: usize) -> usize {
-        new_cursor_pos.clamp(0, self.input.len())
-    }
-
-    fn reset_cursor(&mut self) {
-        self.cursor_position = 0;
-    }
-
-    async fn submit_message(&mut self) {
-        // TODO: handle the promise
-        let _ = self
-            .command_writer
-            .write(&command::UserCommand::SendMessage(
-                command::SendMessageCommand {
-                    room: "general".to_string(),
-                    content: self.input.clone(),
-                },
-            ))
-            .await;
-
-        self.input.clear();
-        self.reset_cursor();
     }
 }
 
