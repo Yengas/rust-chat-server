@@ -1,7 +1,10 @@
+use anyhow::Context;
 use comms::event;
 use tokio::sync::broadcast;
 
 #[derive(Debug)]
+/// MessageSender is a struct that allows sending messages associated to a specific room
+/// and a username. When a user joins a room, a MessageSender is created for that user.
 pub struct MessageSender {
     broacast_tx: broadcast::Sender<event::Event>,
     room: String,
@@ -17,19 +20,23 @@ impl MessageSender {
         }
     }
 
+    /// Send a message to the room
     pub fn send(&self, content: String) -> anyhow::Result<()> {
         self.broacast_tx
             .send(comms::event::Event::UserMessage(event::UserMessageEvent {
                 room: self.room.clone(),
                 username: self.username.clone(),
                 content,
-            }))?;
+            }))
+            .context("could not write to the broadcast channel")?;
 
         Ok(())
     }
 }
 
 #[derive(Debug)]
+/// UserRoomParticipation is a struct that holds a MessageSender and a broadcast receiver.
+/// When a user joins a room, a UserRoomParticipation is handed out to that user.
 pub struct UserRoomParticipation {
     pub message_sender: MessageSender,
     pub broadcast_rx: broadcast::Receiver<event::Event>,
@@ -45,6 +52,7 @@ impl UserRoomParticipation {
 }
 
 #[derive(Debug, Clone)]
+/// ChatRoomMetadata is a struct that holds the metadata of a chat room.
 pub struct ChatRoomMetadata {
     pub name: String,
     pub description: String,
@@ -60,6 +68,8 @@ impl ChatRoomMetadata {
 }
 
 #[derive(Debug)]
+/// ChatRoom is a struct that handles the participants of a chat room and the primary broadcast channel
+/// A UserRoomParticipation is handed out to a user when they join a room
 pub struct ChatRoom {
     name: String,
     participants: Vec<String>,
@@ -77,6 +87,8 @@ impl ChatRoom {
         }
     }
 
+    /// Add a participant to the room and broadcast that they joined
+    /// A UserRoomParticipation is returned for the user to be able to interact with the room
     pub fn add_participant(&mut self, username: String) -> UserRoomParticipation {
         self.participants.push(username.clone());
 
@@ -95,6 +107,7 @@ impl ChatRoom {
         UserRoomParticipation::new(message_sender, broadcast_rx)
     }
 
+    /// Remove a participant from the room and broadcast that they left
     pub fn remove_participant(&mut self, username: &String) {
         self.participants.retain(|p| p != username);
 

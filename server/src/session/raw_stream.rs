@@ -29,6 +29,9 @@ impl<W: AsyncWrite + Unpin> EventWriter<W> {
     }
 }
 
+/// Splits a TCP stream into a stream of lines and a writer.
+/// The user can only send commands to the server, hence stream of lines is deserialized into `UserCommand`s
+/// and the writer is used to send `Event`s to the user that maybe response to the command or a broadcasted event from another user.
 pub(super) fn split_stream(
     stream: TcpStream,
 ) -> (

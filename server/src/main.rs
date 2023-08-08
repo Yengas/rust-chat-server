@@ -19,24 +19,18 @@ const PORT: u16 = 8080;
 async fn main() {
     let mut join_set: JoinSet<anyhow::Result<()>> = JoinSet::new();
     let chat_rooms: Vec<(ChatRoomMetadata, Arc<Mutex<ChatRoom>>)> = vec![
-        {
-            let metadata = ChatRoomMetadata::new(
-                "general",
-                "talking about topics which do not fall into any other room",
-            );
-            let chat_room = Arc::new(Mutex::new(ChatRoom::new(&metadata)));
-
-            (metadata, chat_room)
-        },
-        {
-            let metadata =
-                ChatRoomMetadata::new("rust", "talking about the Rust programming language");
-            let chat_room = Arc::new(Mutex::new(ChatRoom::new(&metadata)));
-
-            (metadata, chat_room)
-        },
+        ChatRoomMetadata::new(
+            "general",
+            "talking about topics which do not fall into any other room",
+        ),
+        ChatRoomMetadata::new("rust", "talking about the Rust programming language"),
     ]
     .into_iter()
+    .map(|metadata| {
+        let room = ChatRoom::new(&metadata);
+
+        (metadata, Arc::new(Mutex::new(room)))
+    })
     .collect();
 
     let mut interrupt =
