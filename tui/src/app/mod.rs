@@ -1,37 +1,60 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc, time::Duration};
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    rc::Rc,
+    sync::{Arc, RwLock},
+    time::Duration,
+};
 
-use comms::{command, event};
-use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use comms::event;
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use tokio::{
     net::tcp::OwnedWriteHalf,
-    sync::{broadcast, RwLock},
+    sync::{broadcast, RwLock as TokioRwLock},
 };
 use tokio_stream::StreamExt;
 
 use crate::client::{BoxedStream, CommandWriter};
 
-use self::termination::{Interrupted, Terminator};
+use self::{
+    input_box::InputBox,
+    room_list::RoomList,
+    shared_state::SharedState,
+    termination::{Interrupted, Terminator},
+    widget_handler::{WidgetHandler, WidgetKeyHandled},
+};
 
+mod input_box;
+mod room_list;
+mod shared_state;
 pub(crate) mod termination;
+mod widget_handler;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) enum Section {
-    RoomList,
     MessageInput,
+    RoomList,
 }
 
-pub(crate) struct RoomState {
-    pub(crate) name: String,
-    pub(crate) description: String,
-    pub(crate) joined: bool,
+impl Section {
+    pub const COUNT: usize = 2;
+
+    fn to_usize(&self) -> usize {
+        match self {
+            Section::MessageInput => 0,
+            Section::RoomList => 1,
+        }
+    }
 }
 
-impl RoomState {
-    pub(crate) fn new(name: String, description: String, joined: bool) -> RoomState {
-        RoomState {
-            name,
-            description,
-            joined,
+impl TryFrom<usize> for Section {
+    type Error = ();
+
+    fn try_from(value: usize) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Section::MessageInput),
+            1 => Ok(Section::RoomList),
+            _ => Err(()),
         }
     }
 }
@@ -41,135 +64,24 @@ pub(crate) enum MessageBoxItem {
     Notification(String),
 }
 
-pub(crate) struct Input {
-    command_writer: Rc<RefCell<CommandWriter<OwnedWriteHalf>>>,
-    /// Current value of the input box
-    pub(crate) input: String,
-    /// Position of cursor in the editor area.
-    pub(crate) cursor_position: usize,
-}
-
-impl Input {
-    fn new(command_writer: Rc<RefCell<CommandWriter<OwnedWriteHalf>>>) -> Self {
-        Self {
-            command_writer,
-            input: String::new(),
-            cursor_position: 0,
-        }
-    }
-
-    async fn activate(&mut self) {}
-
-    async fn deactivate(&mut self) {
-        self.cursor_position = 0;
-        self.input.clear();
-    }
-
-    async fn handle_key_event(&mut self, key: KeyEvent) {
-        if key.kind != KeyEventKind::Press {
-            return;
-        }
-
-        match key.code {
-            KeyCode::Enter => self.submit_message().await,
-            KeyCode::Char(to_insert) => {
-                self.enter_char(to_insert);
-            }
-            KeyCode::Backspace => {
-                self.delete_char();
-            }
-            KeyCode::Left => {
-                self.move_cursor_left();
-            }
-            KeyCode::Right => {
-                self.move_cursor_right();
-            }
-            _ => {}
-        }
-    }
-
-    async fn submit_message(&mut self) {
-        // TODO: handle the promise
-        let _ = self
-            .command_writer
-            .borrow_mut()
-            .write(&command::UserCommand::SendMessage(
-                command::SendMessageCommand {
-                    room: "general".to_string(),
-                    content: self.input.clone(),
-                },
-            ))
-            .await;
-
-        self.input.clear();
-        self.reset_cursor();
-    }
-
-    fn move_cursor_left(&mut self) {
-        let cursor_moved_left = self.cursor_position.saturating_sub(1);
-        self.cursor_position = self.clamp_cursor(cursor_moved_left);
-    }
-
-    fn move_cursor_right(&mut self) {
-        let cursor_moved_right = self.cursor_position.saturating_add(1);
-        self.cursor_position = self.clamp_cursor(cursor_moved_right);
-    }
-
-    fn enter_char(&mut self, new_char: char) {
-        self.input.insert(self.cursor_position, new_char);
-
-        self.move_cursor_right();
-    }
-
-    fn delete_char(&mut self) {
-        let is_not_cursor_leftmost = self.cursor_position != 0;
-        if is_not_cursor_leftmost {
-            // Method "remove" is not used on the saved text for deleting the selected char.
-            // Reason: Using remove on String works on bytes instead of the chars.
-            // Using remove would require special care because of char boundaries.
-
-            let current_index = self.cursor_position;
-            let from_left_to_current_index = current_index - 1;
-
-            // Getting all characters before the selected character.
-            let before_char_to_delete = self.input.chars().take(from_left_to_current_index);
-            // Getting all characters after selected character.
-            let after_char_to_delete = self.input.chars().skip(current_index);
-
-            // Put all characters together except the selected one.
-            // By leaving the selected one out, it is forgotten and therefore deleted.
-            self.input = before_char_to_delete.chain(after_char_to_delete).collect();
-            self.move_cursor_left();
-        }
-    }
-
-    fn clamp_cursor(&self, new_cursor_pos: usize) -> usize {
-        new_cursor_pos.clamp(0, self.input.len())
-    }
-
-    fn reset_cursor(&mut self) {
-        self.cursor_position = 0;
-    }
-}
+const DEFAULT_HOVERED_SECTION: Section = Section::MessageInput;
 
 /// App holds the state of the application
 pub(crate) struct App {
-    /// Command Writer is used to send commands
-    command_writer: Rc<RefCell<CommandWriter<OwnedWriteHalf>>>,
     /// Terminator is used to send the kill signal to the application
     terminator: Terminator,
+    /// Shared state between widgets
+    pub(crate) shared_state: Rc<RwLock<SharedState>>,
     /// Currently active section, handling input
     pub(crate) active_section: Option<Section>,
     /// Section that is currently hovered
-    pub(crate) hovered_section: Option<Section>,
+    pub(crate) last_hovered_section: Section,
     /// The name of the user
     pub(crate) username: String,
-    /// The list of rooms the user can participate in and their status
-    pub(crate) rooms: Vec<RoomState>,
-    // The active room which the user has selected
-    pub(crate) active_room: Option<String>,
-    // The widget status
-    pub(crate) input: Input,
+    // The room list widget that handles the listing of the rooms
+    pub(crate) room_list: RoomList,
+    // The input box widget that handles the message input
+    pub(crate) input_box: InputBox,
     /// History of recorded messages
     pub(crate) messages: HashMap<String, Vec<MessageBoxItem>>,
     /// Timer since app was open
@@ -178,42 +90,40 @@ pub(crate) struct App {
 
 impl App {
     pub fn new(command_writer: CommandWriter<OwnedWriteHalf>, terminator: Terminator) -> Self {
-        let command_writer = Rc::new(RefCell::new(command_writer));
-        let command_writer_2 = Rc::clone(&command_writer);
+        let shared_state = Rc::new(RwLock::new(SharedState::new()));
+        let command_writer_1 = Rc::new(RefCell::new(command_writer));
+        let command_writer_2 = Rc::clone(&command_writer_1);
 
         App {
-            command_writer,
             terminator,
+            shared_state: Rc::clone(&shared_state),
             active_section: Option::None,
-            hovered_section: Option::Some(Section::MessageInput),
+            last_hovered_section: DEFAULT_HOVERED_SECTION,
             //
             username: String::new(),
-            active_room: Option::None,
-            rooms: Vec::new(),
+            //
+            room_list: RoomList::new(command_writer_1, Rc::clone(&shared_state)),
+            //
+            input_box: InputBox::new(command_writer_2, Rc::clone(&shared_state)),
+            //
             messages: HashMap::new(),
-            //
-            input: Input::new(command_writer_2),
-            //
             timer: 0,
         }
     }
 
     pub(crate) async fn handle_key_event(&mut self, key: KeyEvent) {
-        match self.active_section.as_ref() {
+        let active_section = self.active_section.clone();
+        match active_section {
             None => match key.code {
-                KeyCode::Char('e') => match self.hovered_section.as_ref() {
-                    Some(section) => {
-                        self.active_section = Some(section.clone());
+                KeyCode::Char('e') => {
+                    let last_hovered_section = self.last_hovered_section.clone();
 
-                        let handler = match section {
-                            Section::MessageInput => &mut self.input,
-                            _ => todo!("handle other sections"),
-                        };
-
-                        handler.activate().await;
-                    }
-                    None => (),
-                },
+                    self.active_section = Some(last_hovered_section.clone());
+                    self.get_handler_for_section(&last_hovered_section)
+                        .activate();
+                }
+                KeyCode::Left => self.hover_previous(),
+                KeyCode::Right => self.hover_next(),
                 KeyCode::Char('q') => {
                     let _ = self.terminator.terminate(Interrupted::UserInt);
                 }
@@ -223,24 +133,25 @@ impl App {
                 _ => {}
             },
             Some(section) if key.code == KeyCode::Esc => {
-                match section {
-                    Section::MessageInput => {
-                        self.input.deactivate().await;
-                    }
-                    _ => todo!("handle other sections"),
-                }
-
+                self.get_handler_for_section(&section).deactivate();
                 self.active_section = None;
-                self.hovered_section = None;
             }
             Some(section) => {
-                let handler = match section {
-                    Section::MessageInput => &mut self.input,
-                    _ => todo!("handle other sections"),
-                };
+                let handler = self.get_handler_for_section(&section);
 
-                handler.handle_key_event(key).await;
+                if let WidgetKeyHandled::LoseFocus = handler.handle_key_event(key).await {
+                    handler.deactivate();
+
+                    self.active_section = None;
+                }
             }
+        }
+    }
+
+    fn get_handler_for_section<'a>(&'a mut self, section: &Section) -> &'a mut dyn WidgetHandler {
+        match section {
+            Section::MessageInput => &mut self.input_box,
+            Section::RoomList => &mut self.room_list,
         }
     }
 
@@ -248,12 +159,7 @@ impl App {
         match event {
             event::Event::LoginSuccessful(event) => {
                 self.username = event.username.clone();
-                self.rooms = event
-                    .rooms
-                    .clone()
-                    .into_iter()
-                    .map(|r| RoomState::new(r.name, r.description, false))
-                    .collect();
+                self.room_list.process_login_success(event);
                 self.messages = event
                     .rooms
                     .clone()
@@ -262,19 +168,8 @@ impl App {
                     .collect();
             }
             event::Event::RoomParticipation(event) => {
-                if event.username == self.username {
-                    let room = self
-                        .rooms
-                        .iter_mut()
-                        .find(|r| r.name == event.room)
-                        .expect("room not found");
-
-                    room.joined = match event.status {
-                        event::RoomParticipationStatus::Joined => true,
-                        event::RoomParticipationStatus::Left => false,
-                    };
-                }
-
+                self.room_list
+                    .process_room_participation(event, self.username.as_str());
                 self.messages
                     .get_mut(&event.room)
                     .unwrap()
@@ -299,6 +194,22 @@ impl App {
         }
     }
 
+    fn hover_next(&mut self) {
+        let idx: usize = self.last_hovered_section.to_usize();
+        let next_idx = (idx + 1) % Section::COUNT;
+        self.last_hovered_section = Section::try_from(next_idx).unwrap();
+    }
+
+    fn hover_previous(&mut self) {
+        let idx: usize = self.last_hovered_section.to_usize();
+        let previous_idx = if idx == 0 {
+            Section::COUNT - 1
+        } else {
+            idx - 1
+        };
+        self.last_hovered_section = Section::try_from(previous_idx).unwrap();
+    }
+
     fn increment_timer(&mut self) {
         self.timer += 1;
     }
@@ -307,7 +218,7 @@ impl App {
 pub(crate) async fn main_loop(
     mut interrupt_rx: broadcast::Receiver<Interrupted>,
     mut event_stream: BoxedStream<anyhow::Result<event::Event>>,
-    app: Arc<RwLock<App>>,
+    app: Arc<TokioRwLock<App>>,
 ) -> anyhow::Result<Interrupted> {
     let mut ticker = tokio::time::interval(Duration::from_secs(1));
 

@@ -2,6 +2,16 @@ use ratatui::{prelude::*, widgets::*};
 
 use crate::app::{App, MessageBoxItem, Section};
 
+impl App {
+    fn calculate_border_color(&self, section: Section) -> Color {
+        match (self.active_section.as_ref(), &self.last_hovered_section) {
+            (Some(active_section), _) if active_section.eq(&section) => Color::Yellow,
+            (_, last_hovered_section) if last_hovered_section.eq(&section) => Color::Blue,
+            _ => Color::Reset,
+        }
+    }
+}
+
 pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) {
     let [left, middle, right] = *Layout::default()
         .direction(Direction::Horizontal)
@@ -30,18 +40,46 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
             panic!("The left layout should have 2 chunks")
         };
 
+    let active_room = {
+        let shared_state = app.shared_state.read().unwrap();
+
+        shared_state.active_room.clone()
+    };
     let room_list: Vec<ListItem> = app
+        .room_list
         .rooms
         .iter()
         .map(|room_state| {
             let content = Line::from(Span::raw(format!("#{}", room_state.name)));
+            let style = if app.room_list.state.selected().is_none()
+                && active_room.is_some()
+                && active_room.as_ref().unwrap().eq(&room_state.name)
+            {
+                Style::default().add_modifier(Modifier::BOLD)
+            } else {
+                Style::default()
+            };
 
-            ListItem::new(content)
+            ListItem::new(content).style(style.bg(Color::Reset))
         })
         .collect();
-    let room_list =
-        List::new(room_list).block(Block::default().borders(Borders::ALL).title("Rooms"));
-    frame.render_widget(room_list, container_room_list);
+
+    let room_list = List::new(room_list)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::new().fg(app.calculate_border_color(Section::RoomList)))
+                .title("Rooms"),
+        )
+        .highlight_style(
+            Style::default()
+                .bg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        )
+        .highlight_symbol(">");
+
+    let mut app_room_list_state = app.room_list.state.clone();
+    frame.render_stateful_widget(room_list, container_room_list, &mut app_room_list_state);
 
     let user_info = Paragraph::new(Text::from(vec![
         Line::from(format!("User: @{}", app.username)),
@@ -68,10 +106,9 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
             panic!("The middle layout should have 3 chunks")
         };
 
-    let top_line = if let Some(active_room) = app
-        .active_room
+    let top_line = if let Some(active_room) = active_room
         .as_ref()
-        .and_then(|active_room| app.rooms.iter().find(|r| r.name.eq(active_room)))
+        .and_then(|active_room| app.room_list.rooms.iter().find(|r| r.name.eq(active_room)))
     {
         Line::from(vec![
             "on ".into(),
@@ -91,7 +128,7 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
     );
     frame.render_widget(help_message, container_highlight);
 
-    let messages = if let Some(active_room) = app.active_room.as_ref() {
+    let messages = if let Some(active_room) = active_room.as_ref() {
         app.messages
             .get(active_room)
             .map(|messages| {
@@ -119,34 +156,27 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
         List::new(messages).block(Block::default().borders(Borders::ALL).title("Messages"));
     frame.render_widget(messages, container_messages);
 
-    let is_selected = match app.active_section.as_ref() {
-        Some(Section::MessageInput) => true,
-        _ => false,
-    };
-    let input = Paragraph::new(app.input.input.as_str())
-        .style(if is_selected {
-            Style::default().fg(Color::Yellow)
-        } else {
-            Style::default()
-        })
-        .block(Block::default().borders(Borders::ALL).title("Input"));
+    let input = Paragraph::new(app.input_box.text.as_str())
+        .style(Style::default().fg(Color::Yellow))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .fg(app.calculate_border_color(Section::MessageInput))
+                .title("Input"),
+        );
     frame.render_widget(input, container_input);
-    match is_selected {
-        false =>
-            // Hide the cursor. `Frame` does this by default, so we don't need to do anything here
-            {}
 
-        true => {
-            // Make the cursor visible and ask ratatui to put it at the specified coordinates after
-            // rendering
-            frame.set_cursor(
-                // Draw the cursor at the current position in the input field.
-                // This position is can be controlled via the left and right arrow key
-                container_input.x + app.input.cursor_position as u16 + 1,
-                // Move one line down, from the border to the input line
-                container_input.y + 1,
-            )
-        }
+    // Cursor is hidden by default, so we need to make it visible if the input box is selected
+    if let Some(Section::MessageInput) = app.active_section {
+        // Make the cursor visible and ask ratatui to put it at the specified coordinates after
+        // rendering
+        frame.set_cursor(
+            // Draw the cursor at the current position in the input field.
+            // This position is can be controlled via the left and right arrow key
+            container_input.x + app.input_box.cursor_position as u16 + 1,
+            // Move one line down, from the border to the input line
+            container_input.y + 1,
+        )
     }
 
     let [container_room_users, container_usage] = *Layout::default()
