@@ -3,8 +3,8 @@ use std::sync::Arc;
 use tokio::{net::TcpStream, sync::RwLock};
 
 mod app;
-mod cli;
 mod client;
+mod manager;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -15,7 +15,7 @@ async fn main() -> anyhow::Result<()> {
     let app = Arc::new(RwLock::new(App::new(command_writer, terminator.clone())));
 
     tokio::try_join!(
-        cli::main_loop(interrupt_rx.resubscribe(), Arc::clone(&app)),
+        manager::main_loop(interrupt_rx.resubscribe(), Arc::clone(&app)),
         app::main_loop(interrupt_rx.resubscribe(), event_stream, app),
     )?;
 

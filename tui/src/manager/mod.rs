@@ -14,7 +14,7 @@ use ratatui::prelude::*;
 use tokio::sync::{broadcast, RwLock};
 use tokio_stream::StreamExt;
 
-mod ui;
+mod rendering;
 
 const TICK_RATE: Duration = Duration::from_millis(250);
 
@@ -45,7 +45,7 @@ pub(crate) async fn main_loop(
         {
             let app = app.read().await;
 
-            terminal.draw(|frame| ui::render_app_too_frame(frame, &app))?;
+            terminal.draw(|frame| rendering::render_app_too_frame(frame, &app))?;
         }
     };
 
