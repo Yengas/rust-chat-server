@@ -4,7 +4,6 @@ use std::{
     time::Duration,
 };
 
-use crate::app::{termination::Interrupted, App};
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture, Event, EventStream},
     execute,
@@ -13,6 +12,8 @@ use crossterm::{
 use ratatui::prelude::*;
 use tokio::sync::{broadcast, RwLock};
 use tokio_stream::StreamExt;
+
+use crate::{app::app::App, Interrupted};
 
 mod rendering;
 

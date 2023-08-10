@@ -1,22 +1,19 @@
-use app::{termination::create_termination, App};
-use std::sync::Arc;
-use tokio::{net::TcpStream, sync::RwLock};
+use termination::create_termination;
 
-mod app;
-mod client;
+pub(self) mod app;
 mod manager;
+mod termination;
+
+pub(self) use termination::{Interrupted, Terminator};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let stream = TcpStream::connect("localhost:8080").await?;
-    let (event_stream, command_writer) = client::split_stream(stream);
     let (terminator, interrupt_rx) = create_termination();
-
-    let app = Arc::new(RwLock::new(App::new(command_writer, terminator.clone())));
+    let mut app_holder = app::create_app_holder(terminator.clone()).await?;
 
     tokio::try_join!(
-        manager::main_loop(interrupt_rx.resubscribe(), Arc::clone(&app)),
-        app::main_loop(interrupt_rx.resubscribe(), event_stream, app),
+        manager::main_loop(interrupt_rx.resubscribe(), app_holder.take_app_reference()),
+        app_holder.main_loop(interrupt_rx),
     )?;
 
     Ok(())

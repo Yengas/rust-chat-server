@@ -1,6 +1,9 @@
 use ratatui::{prelude::*, widgets::*};
 
-use crate::app::{App, MessageBoxItem, Section, WidgetUsage};
+use crate::app::{
+    app::{App, MessageBoxItem, Section},
+    WidgetUsage,
+};
 
 const NO_ROOM_SELECTED_MESSAGE: &str = "Join at least one room to start chatting!";
 

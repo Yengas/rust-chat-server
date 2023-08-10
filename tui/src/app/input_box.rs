@@ -5,21 +5,21 @@ use comms::command;
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
 use tokio::net::tcp::OwnedWriteHalf;
 
-use crate::client::CommandWriter;
+use super::client::CommandWriter;
 
 use super::{
     shared_state::SharedState,
     widget_handler::{WidgetHandler, WidgetKeyHandled, WidgetUsage, WidgetUsageKey},
 };
 
-pub(crate) struct InputBox {
+pub struct InputBox {
     command_writer: Rc<RefCell<CommandWriter<OwnedWriteHalf>>>,
     /// Shared state between widgets
     shared_state: Rc<RwLock<SharedState>>,
     /// Current value of the input box
-    pub(crate) text: String,
+    pub text: String,
     /// Position of cursor in the editor area.
-    pub(crate) cursor_position: usize,
+    pub cursor_position: usize,
 }
 
 impl InputBox {

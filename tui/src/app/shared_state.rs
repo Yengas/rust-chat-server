@@ -1,9 +1,9 @@
-pub(crate) struct SharedState {
-    pub(crate) active_room: Option<String>,
+pub struct SharedState {
+    pub active_room: Option<String>,
 }
 
 impl SharedState {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self { active_room: None }
     }
 }

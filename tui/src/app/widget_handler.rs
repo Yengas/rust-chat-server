@@ -2,15 +2,15 @@ use async_trait::async_trait;
 use crossterm::event::KeyEvent;
 
 #[derive(Debug, Clone)]
-pub(crate) struct WidgetUsageKey {
-    pub(crate) keys: Vec<String>,
-    pub(crate) description: String,
+pub struct WidgetUsageKey {
+    pub keys: Vec<String>,
+    pub description: String,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct WidgetUsage {
-    pub(crate) description: Option<String>,
-    pub(crate) keys: Vec<WidgetUsageKey>,
+pub struct WidgetUsage {
+    pub description: Option<String>,
+    pub keys: Vec<WidgetUsageKey>,
 }
 
 #[async_trait(?Send)]

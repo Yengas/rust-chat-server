@@ -9,17 +9,17 @@ use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::widgets::ListState;
 use tokio::net::tcp::OwnedWriteHalf;
 
-use crate::client::CommandWriter;
+use super::client::CommandWriter;
 
 use super::{
     shared_state::SharedState,
     widget_handler::{WidgetHandler, WidgetKeyHandled, WidgetUsage, WidgetUsageKey},
 };
 
-pub(crate) struct RoomState {
-    pub(crate) name: String,
-    pub(crate) description: String,
-    pub(crate) joined: bool,
+pub struct RoomState {
+    pub name: String,
+    pub description: String,
+    pub joined: bool,
 }
 
 impl RoomState {
@@ -32,15 +32,15 @@ impl RoomState {
     }
 }
 
-pub(crate) struct RoomList {
+pub struct RoomList {
     /// Command Writer is used to send commands
     command_writer: Rc<RefCell<CommandWriter<OwnedWriteHalf>>>,
     /// Shared state between widgets
     shared_state: Rc<RwLock<SharedState>>,
     /// List with optional selection and current offset
-    pub(crate) state: ListState,
+    pub state: ListState,
     /// The list of rooms the user can participate in and their status
-    pub(crate) rooms: Vec<RoomState>,
+    pub rooms: Vec<RoomState>,
 }
 
 impl RoomList {
