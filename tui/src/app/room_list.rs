@@ -13,7 +13,7 @@ use crate::client::CommandWriter;
 
 use super::{
     shared_state::SharedState,
-    widget_handler::{WidgetHandler, WidgetKeyHandled},
+    widget_handler::{WidgetHandler, WidgetKeyHandled, WidgetUsage, WidgetUsageKey},
 };
 
 pub(crate) struct RoomState {
@@ -147,6 +147,30 @@ impl WidgetHandler for RoomList {
     fn deactivate(&mut self) {
         *self.state.offset_mut() = 0;
         self.state.select(None);
+    }
+
+    fn name(&self) -> &str {
+        "Room List"
+    }
+
+    fn usage(&self) -> WidgetUsage {
+        WidgetUsage {
+            description: Some("Select the room to talk in".into()),
+            keys: vec![
+                WidgetUsageKey {
+                    keys: vec!["Esc".into()],
+                    description: "to cancel".into(),
+                },
+                WidgetUsageKey {
+                    keys: vec!["↑".into(), "↓".into()],
+                    description: "to navigate".into(),
+                },
+                WidgetUsageKey {
+                    keys: vec!["Enter".into()],
+                    description: "to join room".into(),
+                },
+            ],
+        }
     }
 
     async fn handle_key_event(&mut self, key: KeyEvent) -> WidgetKeyHandled {

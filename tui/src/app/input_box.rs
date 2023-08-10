@@ -9,7 +9,7 @@ use crate::client::CommandWriter;
 
 use super::{
     shared_state::SharedState,
-    widget_handler::{WidgetHandler, WidgetKeyHandled},
+    widget_handler::{WidgetHandler, WidgetKeyHandled, WidgetUsage, WidgetUsageKey},
 };
 
 pub(crate) struct InputBox {
@@ -109,33 +109,62 @@ impl WidgetHandler for InputBox {
         self.text.clear();
     }
 
+    fn name(&self) -> &str {
+        "Message Input"
+    }
+
+    fn usage(&self) -> WidgetUsage {
+        if self.shared_state.read().unwrap().active_room.is_none() {
+            WidgetUsage {
+                description: Some("You can not send a message until you enter a room.".into()),
+                keys: vec![WidgetUsageKey {
+                    keys: vec!["Esc".into()],
+                    description: "to cancel".into(),
+                }],
+            }
+        } else {
+            WidgetUsage {
+                description: Some("Type your message to send a message to the active room".into()),
+                keys: vec![
+                    WidgetUsageKey {
+                        keys: vec!["Esc".into()],
+                        description: "to cancel".into(),
+                    },
+                    WidgetUsageKey {
+                        keys: vec!["Enter".into()],
+                        description: "to send your message".into(),
+                    },
+                ],
+            }
+        }
+    }
+
     async fn handle_key_event(&mut self, key: KeyEvent) -> WidgetKeyHandled {
         if key.kind != KeyEventKind::Press {
             return WidgetKeyHandled::Ok;
         }
-
-        match key.code {
-            KeyCode::Enter => {
-                let active_room = self.shared_state.read().unwrap().active_room.clone();
-                if let Some(active_room) = active_room {
+        let active_room = self.shared_state.read().unwrap().active_room.clone();
+        if let Some(active_room) = active_room {
+            match key.code {
+                KeyCode::Enter => {
                     self.submit_message(active_room).await;
-                }
 
-                return WidgetKeyHandled::LoseFocus;
+                    return WidgetKeyHandled::LoseFocus;
+                }
+                KeyCode::Char(to_insert) => {
+                    self.enter_char(to_insert);
+                }
+                KeyCode::Backspace => {
+                    self.delete_char();
+                }
+                KeyCode::Left => {
+                    self.move_cursor_left();
+                }
+                KeyCode::Right => {
+                    self.move_cursor_right();
+                }
+                _ => {}
             }
-            KeyCode::Char(to_insert) => {
-                self.enter_char(to_insert);
-            }
-            KeyCode::Backspace => {
-                self.delete_char();
-            }
-            KeyCode::Left => {
-                self.move_cursor_left();
-            }
-            KeyCode::Right => {
-                self.move_cursor_right();
-            }
-            _ => {}
         }
 
         WidgetKeyHandled::Ok

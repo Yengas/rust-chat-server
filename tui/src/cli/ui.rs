@@ -1,6 +1,50 @@
 use ratatui::{prelude::*, widgets::*};
 
-use crate::app::{App, MessageBoxItem, Section};
+use crate::app::{App, MessageBoxItem, Section, WidgetUsage};
+
+const NO_ROOM_SELECTED_MESSAGE: &str = "Join at least one room to start chatting!";
+
+fn key_to_span<'a>(key: &String) -> Span<'a> {
+    Span::from(format!("({})", key)).bold()
+}
+
+fn widget_usage_to_text<'a>(usage: WidgetUsage) -> Text<'a> {
+    let mut lines: Vec<Line> = vec![];
+    if let Some(description) = usage.description {
+        lines.push(Line::from(description));
+    }
+
+    for wuk in usage.keys {
+        let mut bindings: Vec<Span> = match wuk.keys.len() {
+            0 => vec![],
+            1 => vec![key_to_span(&wuk.keys[0])],
+            2 => vec![
+                key_to_span(&wuk.keys[0]),
+                " or ".into(),
+                key_to_span(&wuk.keys[1]),
+            ],
+            _ => {
+                let mut bindings: Vec<Span> = Vec::with_capacity(wuk.keys.len() * 2);
+
+                for key in wuk.keys.iter().take(wuk.keys.len() - 1) {
+                    bindings.push(key_to_span(key));
+                    bindings.push(", ".into());
+                }
+
+                bindings.push("or".into());
+                bindings.push(key_to_span(wuk.keys.last().unwrap()));
+
+                bindings
+            }
+        };
+
+        bindings.push(Span::from(format!(" {}", wuk.description)));
+
+        lines.push(Line::from(bindings));
+    }
+
+    Text::from(lines)
+}
 
 impl App {
     fn calculate_border_color(&self, section: Section) -> Color {
@@ -117,7 +161,7 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
             Span::from(format!(r#""{}""#, active_room.description)).italic(),
         ])
     } else {
-        Line::from("Please select a room.")
+        Line::from(NO_ROOM_SELECTED_MESSAGE)
     };
     let text = Text::from(top_line);
 
@@ -150,7 +194,7 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
             })
             .unwrap_or_default()
     } else {
-        vec![ListItem::new(Line::from("Please select a room."))]
+        vec![ListItem::new(Line::from(NO_ROOM_SELECTED_MESSAGE))]
     };
     let messages =
         List::new(messages).block(Block::default().borders(Borders::ALL).title("Messages"));
@@ -205,15 +249,7 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
 
     frame.render_widget(room_users_list, container_room_users);
 
-    let mut usage_text = Text::from(vec![
-        Line::from(vec![
-            "(Ctrl + C)".bold(),
-            " or ".into(),
-            "(q)".bold(),
-            " to exit".into(),
-        ]),
-        Line::from(vec!["(e)".bold(), " to start editing".into()]),
-    ]);
+    let mut usage_text: Text = widget_usage_to_text(app.usage());
     usage_text.patch_style(Style::default().add_modifier(Modifier::RAPID_BLINK));
     let usage =
         Paragraph::new(usage_text).block(Block::default().borders(Borders::ALL).title("Usage"));

@@ -24,6 +24,8 @@ use self::{
     widget_handler::{WidgetHandler, WidgetKeyHandled},
 };
 
+pub(crate) use widget_handler::{WidgetUsage, WidgetUsageKey};
+
 mod input_box;
 mod room_list;
 mod shared_state;
@@ -119,7 +121,7 @@ impl App {
                     let last_hovered_section = self.last_hovered_section.clone();
 
                     self.active_section = Some(last_hovered_section.clone());
-                    self.get_handler_for_section(&last_hovered_section)
+                    self.get_handler_for_section_mut(&last_hovered_section)
                         .activate();
                 }
                 KeyCode::Left => self.hover_previous(),
@@ -133,11 +135,11 @@ impl App {
                 _ => {}
             },
             Some(section) if key.code == KeyCode::Esc => {
-                self.get_handler_for_section(&section).deactivate();
+                self.get_handler_for_section_mut(&section).deactivate();
                 self.active_section = None;
             }
             Some(section) => {
-                let handler = self.get_handler_for_section(&section);
+                let handler = self.get_handler_for_section_mut(&section);
 
                 if let WidgetKeyHandled::LoseFocus = handler.handle_key_event(key).await {
                     handler.deactivate();
@@ -148,7 +150,17 @@ impl App {
         }
     }
 
-    fn get_handler_for_section<'a>(&'a mut self, section: &Section) -> &'a mut dyn WidgetHandler {
+    fn get_handler_for_section<'a>(&'a self, section: &Section) -> &'a dyn WidgetHandler {
+        match section {
+            Section::MessageInput => &self.input_box,
+            Section::RoomList => &self.room_list,
+        }
+    }
+
+    fn get_handler_for_section_mut<'a>(
+        &'a mut self,
+        section: &Section,
+    ) -> &'a mut dyn WidgetHandler {
         match section {
             Section::MessageInput => &mut self.input_box,
             Section::RoomList => &mut self.room_list,
@@ -212,6 +224,39 @@ impl App {
 
     fn increment_timer(&mut self) {
         self.timer += 1;
+    }
+
+    pub(crate) fn usage(&self) -> WidgetUsage {
+        if let Some(section) = self.active_section.as_ref() {
+            let handler: &dyn WidgetHandler = match section {
+                Section::RoomList => &self.room_list,
+                Section::MessageInput => &self.input_box,
+            };
+
+            handler.usage()
+        } else {
+            WidgetUsage {
+                description: Some("Select a widget".into()),
+                keys: vec![
+                    WidgetUsageKey {
+                        keys: vec!["q".into()],
+                        description: "to exit".into(),
+                    },
+                    WidgetUsageKey {
+                        keys: vec!["←".into(), "→".into()],
+                        description: "to hover widgets".into(),
+                    },
+                    WidgetUsageKey {
+                        keys: vec!["e".into()],
+                        description: format!(
+                            "to activate {}",
+                            self.get_handler_for_section(&self.last_hovered_section)
+                                .name()
+                        ),
+                    },
+                ],
+            }
+        }
     }
 }
 
