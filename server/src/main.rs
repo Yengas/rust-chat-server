@@ -19,11 +19,30 @@ const PORT: u16 = 8080;
 async fn main() {
     let mut join_set: JoinSet<anyhow::Result<()>> = JoinSet::new();
     let chat_rooms: Vec<(ChatRoomMetadata, Arc<Mutex<ChatRoom>>)> = vec![
-        ChatRoomMetadata::new(
-            "general",
-            "talking about topics which do not fall into any other room",
-        ),
-        ChatRoomMetadata::new("rust", "talking about the Rust programming language"),
+        ChatRoomMetadata::new("general", "General discussions and community bonding"),
+        ChatRoomMetadata::new("rust", "Talk about the Rust programming language"),
+        ChatRoomMetadata::new("web-dev", "All about web development"),
+        ChatRoomMetadata::new("ml", "Machine learning algorithms and research"),
+        ChatRoomMetadata::new("tech-news", "Latest tech news and opinions"),
+        ChatRoomMetadata::new("gaming", "Discuss games and gaming hardware"),
+        ChatRoomMetadata::new("open-src", "Open source collaboration and projects"),
+        ChatRoomMetadata::new("blockchain", "Blockchain and cryptocurrencies"),
+        ChatRoomMetadata::new("startups", "Startup ideas and entrepreneurship"),
+        ChatRoomMetadata::new("design", "Design principles and user experience"),
+        ChatRoomMetadata::new("cloud-devops", "Cloud computing and DevOps practices"),
+        ChatRoomMetadata::new("security", "Cybersecurity and ethical hacking"),
+        ChatRoomMetadata::new("freelance", "Freelancing experiences and networking"),
+        ChatRoomMetadata::new("hardware", "Hardware development and IoT"),
+        ChatRoomMetadata::new("ai", "Discuss artificial intelligence topics"),
+        ChatRoomMetadata::new("mobile-dev", "Mobile app development and tools"),
+        ChatRoomMetadata::new("data-sci", "Data science techniques and tools"),
+        ChatRoomMetadata::new("networking", "Networking protocols and technologies"),
+        ChatRoomMetadata::new("os-dev", "Operating system development and kernel hacking"),
+        ChatRoomMetadata::new("databases", "Database management and SQL"),
+        ChatRoomMetadata::new("frontend", "Frontend development and frameworks"),
+        ChatRoomMetadata::new("robotics", "Robotics engineering and automation"),
+        ChatRoomMetadata::new("academia", "Research, papers, and academic discussions"),
+        ChatRoomMetadata::new("career-advice", "Career growth and job-hunting tips"),
     ]
     .into_iter()
     .map(|metadata| {
