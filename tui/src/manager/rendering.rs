@@ -79,7 +79,7 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
         .constraints(
             [
                 Constraint::Min(1),
-                Constraint::Length(10),
+                Constraint::Length(4),
             ]
             .as_ref(),
         )
@@ -130,7 +130,7 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
 
     let user_info = Paragraph::new(Text::from(vec![
         Line::from(format!("User: @{}", app.username)),
-        Line::from(format!("Seconds in app: {}", app.timer)),
+        Line::from(format!("Chatting for: {} secs", app.timer)),
     ]))
     .block(
         Block::default()
