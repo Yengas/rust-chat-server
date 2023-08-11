@@ -176,10 +176,11 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
     frame.render_widget(help_message, container_highlight);
 
     let messages = if let Some(active_room) = active_room.as_ref() {
-        app.messages
+        app.room_data_map
             .get(active_room)
-            .map(|messages| {
-                messages
+            .map(|room_data| {
+                room_data
+                    .messages
                     .iter()
                     .map(|mbi| {
                         let line = match mbi {
@@ -239,14 +240,21 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
             panic!("The left layout should have 2 chunks")
         };
 
-    let room_users_list_items: Vec<ListItem> = vec!["jjohndoe", "jane", "john"]
-        .iter()
-        .map(|user_name| {
-            let content = Line::from(Span::raw(format!("@{user_name}")));
+    let room_users_list_items: Vec<ListItem> = if let Some(active_room) = active_room.as_ref() {
+        app.room_data_map
+            .get(active_room)
+            .map(|room_data| {
+                room_data
+                    .users
+                    .iter()
+                    .map(|user_name| ListItem::new(Line::from(Span::raw(format!("@{user_name}")))))
+                    .collect::<Vec<ListItem<'_>>>()
+            })
+            .unwrap_or_default()
+    } else {
+        vec![ListItem::new(Line::from(NO_ROOM_SELECTED_MESSAGE))]
+    };
 
-            ListItem::new(content)
-        })
-        .collect();
     let room_users_list = List::new(room_users_list_items)
         .block(Block::default().borders(Borders::ALL).title("Room Users"));
 

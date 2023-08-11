@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use serde::{Deserialize, Serialize};
 
 /// The detail of a given room
@@ -13,7 +15,7 @@ pub struct RoomDetail {
 
 /// A user has successfully logged in
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct LoginSuccessfulEvent {
+pub struct LoginSuccessfulReplyEvent {
     /// The username of the user that has logged in
     #[serde(rename = "u")]
     pub username: String,
@@ -32,7 +34,7 @@ pub enum RoomParticipationStatus {
 
 /// A user has joined or left a room
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct RoomParticipationEvent {
+pub struct RoomParticipationBroacastEvent {
     /// The slug of the room the user has joined or left
     #[serde(rename = "r")]
     pub room: String,
@@ -44,9 +46,20 @@ pub struct RoomParticipationEvent {
     pub status: RoomParticipationStatus,
 }
 
+/// A reply to the user when they have joined a room
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct UserJoinedRoomReplyEvent {
+    /// The slug of the room the user has joined
+    #[serde(rename = "r")]
+    pub room: String,
+    /// The users currently in the room
+    #[serde(rename = "us")]
+    pub users: HashSet<String>,
+}
+
 /// A user has sent a message to a room
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct UserMessageEvent {
+pub struct UserMessageBroadcastEvent {
     /// The slug of the room the user has sent the message to
     #[serde(rename = "r")]
     pub room: String,
@@ -63,9 +76,10 @@ pub struct UserMessageEvent {
 /// Events that can be sent to the client
 /// Events maybe related to different users and rooms, the receipient is a single chat session
 pub enum Event {
-    LoginSuccessful(LoginSuccessfulEvent),
-    RoomParticipation(RoomParticipationEvent),
-    UserMessage(UserMessageEvent),
+    LoginSuccessful(LoginSuccessfulReplyEvent),
+    RoomParticipation(RoomParticipationBroacastEvent),
+    UserJoinedRoom(UserJoinedRoomReplyEvent),
+    UserMessage(UserMessageBroadcastEvent),
 }
 
 #[cfg(test)]
@@ -82,7 +96,7 @@ mod tests {
 
     #[test]
     fn test_login_successful_event() {
-        let event = Event::LoginSuccessful(LoginSuccessfulEvent {
+        let event = Event::LoginSuccessful(LoginSuccessfulReplyEvent {
             username: "test".to_string(),
             rooms: vec![RoomDetail {
                 name: "room1".to_string(),
@@ -98,7 +112,7 @@ mod tests {
 
     #[test]
     fn test_room_participation_join_event() {
-        let event = Event::RoomParticipation(RoomParticipationEvent {
+        let event = Event::RoomParticipation(RoomParticipationBroacastEvent {
             room: "test".to_string(),
             username: "test".to_string(),
             status: RoomParticipationStatus::Joined,
@@ -112,7 +126,7 @@ mod tests {
 
     #[test]
     fn test_room_participation_leave_event() {
-        let event = Event::RoomParticipation(RoomParticipationEvent {
+        let event = Event::RoomParticipation(RoomParticipationBroacastEvent {
             room: "test".to_string(),
             username: "test".to_string(),
             status: RoomParticipationStatus::Left,
@@ -125,8 +139,21 @@ mod tests {
     }
 
     #[test]
+    fn test_user_joined_room_event() {
+        let event = Event::UserJoinedRoom(UserJoinedRoomReplyEvent {
+            room: "test".to_string(),
+            users: vec!["test".to_string()].into_iter().collect(),
+        });
+
+        assert_event_serialization(
+            &event,
+            r#"{"_et":"user_joined_room","r":"test","us":["test"]}"#,
+        );
+    }
+
+    #[test]
     fn test_user_message_event() {
-        let event = Event::UserMessage(UserMessageEvent {
+        let event = Event::UserMessage(UserMessageBroadcastEvent {
             room: "test".to_string(),
             username: "test".to_string(),
             content: "test".to_string(),

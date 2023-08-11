@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use anyhow::Context;
 use comms::event;
 use tokio::sync::broadcast;
@@ -23,11 +25,13 @@ impl MessageSender {
     /// Send a message to the room
     pub fn send(&self, content: String) -> anyhow::Result<()> {
         self.broacast_tx
-            .send(comms::event::Event::UserMessage(event::UserMessageEvent {
-                room: self.room.clone(),
-                username: self.username.clone(),
-                content,
-            }))
+            .send(comms::event::Event::UserMessage(
+                event::UserMessageBroadcastEvent {
+                    room: self.room.clone(),
+                    username: self.username.clone(),
+                    content,
+                },
+            ))
             .context("could not write to the broadcast channel")?;
 
         Ok(())
@@ -72,7 +76,7 @@ impl ChatRoomMetadata {
 /// A UserRoomParticipation is handed out to a user when they join a room
 pub struct ChatRoom {
     name: String,
-    participants: Vec<String>,
+    participants: HashSet<String>,
     broadcast_tx: broadcast::Sender<event::Event>,
 }
 
@@ -83,21 +87,25 @@ impl ChatRoom {
         ChatRoom {
             name: String::from(&metadata.name),
             broadcast_tx,
-            participants: Vec::new(),
+            participants: HashSet::new(),
         }
+    }
+
+    pub fn participants(&self) -> &HashSet<String> {
+        &self.participants
     }
 
     /// Add a participant to the room and broadcast that they joined
     /// A UserRoomParticipation is returned for the user to be able to interact with the room
     pub fn add_participant(&mut self, username: String) -> UserRoomParticipation {
-        self.participants.push(username.clone());
+        self.participants.insert(username.clone());
 
         let broadcast_tx = self.broadcast_tx.clone();
         let broadcast_rx = broadcast_tx.subscribe();
         let message_sender = MessageSender::new(broadcast_tx, self.name.clone(), username.clone());
 
         let _ = self.broadcast_tx.send(event::Event::RoomParticipation(
-            event::RoomParticipationEvent {
+            event::RoomParticipationBroacastEvent {
                 username,
                 room: self.name.clone(),
                 status: event::RoomParticipationStatus::Joined,
@@ -112,7 +120,7 @@ impl ChatRoom {
         self.participants.retain(|p| p != username);
 
         let _ = self.broadcast_tx.send(event::Event::RoomParticipation(
-            event::RoomParticipationEvent {
+            event::RoomParticipationBroacastEvent {
                 username: username.clone(),
                 room: self.name.clone(),
                 status: event::RoomParticipationStatus::Left,

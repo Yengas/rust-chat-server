@@ -3,7 +3,7 @@ use std::{cell::RefCell, rc::Rc, sync::RwLock};
 use async_trait::async_trait;
 use comms::{
     command,
-    event::{self, LoginSuccessfulEvent, RoomParticipationEvent},
+    event::{self, LoginSuccessfulReplyEvent, RoomParticipationBroacastEvent},
 };
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::widgets::ListState;
@@ -85,7 +85,7 @@ impl RoomList {
         self.state.select(Some(i));
     }
 
-    pub(super) fn process_login_success(&mut self, event: &LoginSuccessfulEvent) {
+    pub(super) fn process_login_success(&mut self, event: &LoginSuccessfulReplyEvent) {
         self.rooms = event
             .rooms
             .clone()
@@ -96,7 +96,7 @@ impl RoomList {
 
     pub(super) fn process_room_participation(
         &mut self,
-        event: &RoomParticipationEvent,
+        event: &RoomParticipationBroacastEvent,
         username: &str,
     ) {
         if event.username == username {

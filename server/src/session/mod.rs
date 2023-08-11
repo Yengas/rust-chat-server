@@ -32,7 +32,7 @@ pub async fn handle_user_session(
     // Welcoming the user with a login successful event and necessary information about the server
     event_writer
         .write(&event::Event::LoginSuccessful(
-            event::LoginSuccessfulEvent {
+            event::LoginSuccessfulReplyEvent {
                 username: username.clone(),
                 rooms: chat_rooms
                     .iter()

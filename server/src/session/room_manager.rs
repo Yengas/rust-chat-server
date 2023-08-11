@@ -1,13 +1,16 @@
 use std::{collections::HashMap, sync::Arc};
 
 use anyhow::Context;
-use comms::{command::UserCommand, event::Event};
+use comms::{
+    command::UserCommand,
+    event::{self, Event},
+};
 use tokio::{
     sync::{mpsc, Mutex},
     task::{AbortHandle, JoinSet},
 };
 
-use crate::room::{ChatRoom, MessageSender, UserRoomParticipation};
+use crate::room::{ChatRoom, MessageSender};
 
 pub(super) struct ChatRoomManager {
     username: String,
@@ -45,10 +48,11 @@ impl ChatRoomManager {
                     .get(&cmd.room)
                     .ok_or_else(|| anyhow::anyhow!("room not found"))?;
 
-                let urp: UserRoomParticipation = {
+                let (urp, participants) = {
                     let mut room = room.lock().await;
+                    let urp = room.add_participant(self.username.clone());
 
-                    room.add_participant(self.username.clone())
+                    (urp, room.participants().clone())
                 };
 
                 let (message_sender, mut broadcast_rx) = (urp.message_sender, urp.broadcast_rx);
@@ -57,6 +61,14 @@ impl ChatRoomManager {
                 // hence the user can receive messages from different rooms via single channel
                 let abort_handle = self.join_set.spawn({
                     let mpsc_tx = self.mpsc_tx.clone();
+
+                    // start with sending the user joined room event as a reply to the user
+                    mpsc_tx
+                        .send(Event::UserJoinedRoom(event::UserJoinedRoomReplyEvent {
+                            room: cmd.room.clone(),
+                            users: participants.clone(),
+                        }))
+                        .await?;
 
                     async move {
                         while let Ok(event) = broadcast_rx.recv().await {

@@ -1,4 +1,9 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::RwLock};
+use std::{
+    cell::RefCell,
+    collections::{HashMap, HashSet},
+    rc::Rc,
+    sync::RwLock,
+};
 
 use comms::event;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -44,9 +49,19 @@ impl TryFrom<usize> for Section {
     }
 }
 
+#[derive(Debug, Clone)]
 pub enum MessageBoxItem {
     Message { username: String, content: String },
     Notification(String),
+}
+
+/// RoomData holds the data for a room
+#[derive(Debug, Default, Clone)]
+pub struct RoomData {
+    /// List of users in the room
+    pub users: HashSet<String>,
+    /// History of recorded messages
+    pub messages: Vec<MessageBoxItem>,
 }
 
 const DEFAULT_HOVERED_SECTION: Section = Section::MessageInput;
@@ -67,8 +82,8 @@ pub struct App {
     pub room_list: RoomList,
     // The input box widget that handles the message input
     pub input_box: InputBox,
-    /// History of recorded messages
-    pub messages: HashMap<String, Vec<MessageBoxItem>>,
+    /// Storage of room data
+    pub room_data_map: HashMap<String, RoomData>,
     /// Timer since app was open
     pub timer: usize,
 }
@@ -91,7 +106,7 @@ impl App {
             //
             input_box: InputBox::new(command_writer_2, Rc::clone(&shared_state)),
             //
-            messages: HashMap::new(),
+            room_data_map: HashMap::new(),
             timer: 0,
         }
     }
@@ -155,19 +170,22 @@ impl App {
             event::Event::LoginSuccessful(event) => {
                 self.username = event.username.clone();
                 self.room_list.process_login_success(event);
-                self.messages = event
+                self.room_data_map = event
                     .rooms
                     .clone()
                     .into_iter()
-                    .map(|r| (r.name, Vec::new()))
+                    .map(|r| (r.name, RoomData::default()))
                     .collect();
             }
             event::Event::RoomParticipation(event) => {
                 self.room_list
                     .process_room_participation(event, self.username.as_str());
-                self.messages
-                    .get_mut(&event.room)
-                    .unwrap()
+                let room_data = self.room_data_map.get_mut(&event.room).unwrap();
+
+                room_data.users.insert(event.username.clone());
+
+                room_data
+                    .messages
                     .push(MessageBoxItem::Notification(format!(
                         "{} has {} the room",
                         event.username,
@@ -177,10 +195,14 @@ impl App {
                         }
                     )));
             }
+            event::Event::UserJoinedRoom(event) => {
+                self.room_data_map.get_mut(&event.room).unwrap().users = event.users.clone();
+            }
             event::Event::UserMessage(event) => {
-                self.messages
+                self.room_data_map
                     .get_mut(&event.room)
                     .unwrap()
+                    .messages
                     .push(MessageBoxItem::Message {
                         username: event.username.clone(),
                         content: event.content.clone(),
