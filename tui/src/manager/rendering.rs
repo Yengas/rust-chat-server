@@ -261,7 +261,7 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
             })
             .unwrap_or_default()
     } else {
-        vec![ListItem::new(Line::from(NO_ROOM_SELECTED_MESSAGE))]
+        vec![]
     };
 
     let room_users_list = List::new(room_users_list_items)
@@ -271,7 +271,8 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
 
     let mut usage_text: Text = widget_usage_to_text(app.usage());
     usage_text.patch_style(Style::default().add_modifier(Modifier::RAPID_BLINK));
-    let usage =
-        Paragraph::new(usage_text).block(Block::default().borders(Borders::ALL).title("Usage"));
+    let usage = Paragraph::new(usage_text)
+        .wrap(Wrap { trim: true })
+        .block(Block::default().borders(Borders::ALL).title("Usage"));
     frame.render_widget(usage, container_usage);
 }
