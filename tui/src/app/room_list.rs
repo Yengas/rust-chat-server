@@ -3,7 +3,9 @@ use std::{cell::RefCell, rc::Rc, sync::RwLock};
 use async_trait::async_trait;
 use comms::{
     command,
-    event::{self, LoginSuccessfulReplyEvent, RoomParticipationBroacastEvent},
+    event::{
+        self, LoginSuccessfulReplyEvent, RoomParticipationBroacastEvent, UserMessageBroadcastEvent,
+    },
 };
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::widgets::ListState;
@@ -16,18 +18,30 @@ use super::{
     widget_handler::{WidgetHandler, WidgetKeyHandled, WidgetUsage, WidgetUsageKey},
 };
 
+impl SharedState {
+    fn active_room_eq(&self, other: &str) -> bool {
+        if let Some(active_room) = self.active_room.as_ref().map(|room| room.as_str()) {
+            active_room.eq(other)
+        } else {
+            false
+        }
+    }
+}
+
 pub struct RoomState {
     pub name: String,
     pub description: String,
     pub joined: bool,
+    pub has_unread: bool,
 }
 
 impl RoomState {
-    fn new(name: String, description: String, joined: bool) -> RoomState {
+    fn new(name: String, description: String) -> RoomState {
         RoomState {
             name,
             description,
-            joined,
+            joined: false,
+            has_unread: false,
         }
     }
 }
@@ -90,8 +104,23 @@ impl RoomList {
             .rooms
             .clone()
             .into_iter()
-            .map(|r| RoomState::new(r.name, r.description, false))
+            .map(|r| RoomState::new(r.name, r.description))
             .collect();
+    }
+
+    pub(super) fn process_user_message(&mut self, event: &UserMessageBroadcastEvent) {
+        let is_for_active_room = {
+            self.shared_state
+                .read()
+                .unwrap()
+                .active_room_eq(&event.room)
+        };
+
+        if !is_for_active_room {
+            if let Some(room) = self.get_room_mut(&event.room) {
+                room.has_unread = true;
+            }
+        }
     }
 
     pub(super) fn process_room_participation(
@@ -183,7 +212,7 @@ impl WidgetHandler for RoomList {
             }
             KeyCode::Enter if self.state.selected().is_some() => {
                 let selected_idx = self.state.selected().unwrap();
-                let room_state = self.rooms.get(selected_idx).unwrap();
+                let room_state = self.rooms.get_mut(selected_idx).unwrap();
                 self.shared_state.write().unwrap().active_room = Some(room_state.name.clone());
 
                 if !room_state.joined {
@@ -195,6 +224,8 @@ impl WidgetHandler for RoomList {
                         }))
                         .await;
                 }
+
+                room_state.has_unread = false;
 
                 return WidgetKeyHandled::LoseFocus;
             }

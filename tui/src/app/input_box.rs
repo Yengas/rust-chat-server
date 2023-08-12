@@ -148,8 +148,6 @@ impl WidgetHandler for InputBox {
             match key.code {
                 KeyCode::Enter => {
                     self.submit_message(active_room).await;
-
-                    return WidgetKeyHandled::LoseFocus;
                 }
                 KeyCode::Char(to_insert) => {
                     self.enter_char(to_insert);

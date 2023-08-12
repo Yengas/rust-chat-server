@@ -97,12 +97,20 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
         .rooms
         .iter()
         .map(|room_state| {
-            let content = Line::from(Span::raw(format!("#{}", room_state.name)));
+            let room_tag = format!(
+                "#{}{}",
+                room_state.name,
+                if room_state.has_unread { "*" } else { "" }
+            );
+            let content = Line::from(Span::raw(room_tag));
+
             let style = if app.room_list.state.selected().is_none()
                 && active_room.is_some()
                 && active_room.as_ref().unwrap().eq(&room_state.name)
             {
                 Style::default().add_modifier(Modifier::BOLD)
+            } else if room_state.has_unread {
+                Style::default().add_modifier(Modifier::RAPID_BLINK | Modifier::ITALIC)
             } else {
                 Style::default()
             };
@@ -120,7 +128,8 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
         )
         .highlight_style(
             Style::default()
-                .bg(Color::Yellow)
+                // yellow that would work for both dark / light modes
+                .bg(Color::Rgb(255, 223, 102))
                 .add_modifier(Modifier::BOLD),
         )
         .highlight_symbol(">");

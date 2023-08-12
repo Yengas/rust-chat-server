@@ -207,6 +207,8 @@ impl App {
                         username: event.username.clone(),
                         content: event.content.clone(),
                     });
+
+                self.room_list.process_user_message(event);
             }
         }
     }
