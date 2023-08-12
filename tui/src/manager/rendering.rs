@@ -49,6 +49,12 @@ fn widget_usage_to_text<'a>(usage: WidgetUsage) -> Text<'a> {
     Text::from(lines)
 }
 
+// TODO: move the message list to listview and make it scrollable
+fn calculate_message_list_offset(height: u16, messages_len: usize) -> usize {
+    // minus 2 for borders
+    messages_len.saturating_sub(height as usize - 2)
+}
+
 impl App {
     fn calculate_border_color(&self, section: Section) -> Color {
         match (self.active_section.as_ref(), &self.last_hovered_section) {
@@ -188,8 +194,12 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
         app.room_data_map
             .get(active_room)
             .map(|room_data| {
-                room_data
-                    .messages
+                let message_offset = calculate_message_list_offset(
+                    container_messages.height,
+                    room_data.messages.len(),
+                );
+
+                room_data.messages[message_offset..]
                     .iter()
                     .map(|mbi| {
                         let line = match mbi {
