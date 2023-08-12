@@ -32,11 +32,15 @@ pub(crate) async fn main_loop(
             // Tick to terminate the select every N milliseconds
             _ = ticker.tick() => (),
             // Catch and handle crossterm events
-            Some(Ok(Event::Key(key))) = crossterm_events.next() => {
-                let mut app = app.write().await;
+           maybe_event = crossterm_events.next() => match maybe_event {
+                Some(Ok(Event::Key(key)))  => {
+                    let mut app = app.write().await;
 
-                app.handle_key_event(key).await;
-            }
+                    app.handle_key_event(key).await;
+                },
+                None => break Interrupted::UserInt,
+                _ => (),
+            },
             // Catch and handle interrupt signal to gracefully shutdown
             Ok(interrupted) = interrupt_rx.recv() => {
                 break interrupted;
