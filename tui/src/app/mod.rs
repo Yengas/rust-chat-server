@@ -48,11 +48,17 @@ impl AppHolder {
 
         let result = loop {
             tokio::select! {
-                Some(Ok(event)) = self.event_stream.next() => {
-                    let mut app = self.app.write().await;
+                maybe_event = self.event_stream.next() => match maybe_event {
+                    Some(Ok(event)) => {
+                        let mut app = self.app.write().await;
 
-                    app.handle_server_event(&event);
-                }
+                        app.handle_server_event(&event);
+                    },
+                    None => {
+                        break self.app.write().await.handle_server_disconnect()?;
+                    },
+                    _ => (),
+                },
                 // Tick to terminate the select every N milliseconds
                 _ = ticker.tick() => {
                     let mut app = self.app.write().await;

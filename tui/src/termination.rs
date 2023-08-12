@@ -4,6 +4,7 @@ use tokio::{signal::unix::signal, sync::broadcast};
 pub enum Interrupted {
     OsSigInt,
     UserInt,
+    ServerDisconnected,
 }
 
 #[derive(Debug, Clone)]

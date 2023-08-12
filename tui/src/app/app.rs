@@ -148,6 +148,11 @@ impl App {
         }
     }
 
+    pub(super) fn handle_server_disconnect(&mut self) -> anyhow::Result<Interrupted> {
+        self.terminator.terminate(Interrupted::ServerDisconnected)?;
+        Ok(Interrupted::ServerDisconnected)
+    }
+
     fn get_handler_for_section<'a>(&'a self, section: &Section) -> &'a dyn WidgetHandler {
         match section {
             Section::MessageInput => &self.input_box,
