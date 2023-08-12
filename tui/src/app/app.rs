@@ -182,7 +182,14 @@ impl App {
                     .process_room_participation(event, self.username.as_str());
                 let room_data = self.room_data_map.get_mut(&event.room).unwrap();
 
-                room_data.users.insert(event.username.clone());
+                match event.status {
+                    event::RoomParticipationStatus::Joined => {
+                        room_data.users.insert(event.username.clone());
+                    }
+                    event::RoomParticipationStatus::Left => {
+                        room_data.users.remove(&event.username);
+                    }
+                }
 
                 room_data
                     .messages
