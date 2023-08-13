@@ -1,3 +1,5 @@
+use app::AppHolder;
+use manager::Manager;
 use termination::create_termination;
 
 pub(self) mod app;
@@ -9,11 +11,12 @@ pub(self) use termination::{Interrupted, Terminator};
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let (terminator, mut interrupt_rx) = create_termination();
-    let mut app_holder = app::create_app_holder(terminator.clone()).await?;
+    let (app_holder, state_rx) = AppHolder::new();
+    let (manager, action_rx) = Manager::new();
 
     tokio::try_join!(
-        manager::main_loop(interrupt_rx.resubscribe(), app_holder.take_app_reference()),
-        app_holder.main_loop(interrupt_rx.resubscribe()),
+        app_holder.main_loop(terminator.clone(), action_rx, interrupt_rx.resubscribe()),
+        manager.main_loop(terminator, state_rx, interrupt_rx.resubscribe()),
     )?;
 
     if let Ok(reason) = interrupt_rx.recv().await {

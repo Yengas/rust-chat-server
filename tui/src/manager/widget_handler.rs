@@ -18,8 +18,8 @@ pub(super) trait WidgetHandler {
     fn activate(&mut self);
     fn deactivate(&mut self);
     fn name(&self) -> &str;
-    fn usage(&self) -> WidgetUsage;
     async fn handle_key_event(&mut self, key: KeyEvent) -> WidgetKeyHandled;
+    fn usage(&self) -> WidgetUsage;
 }
 
 #[derive(Debug, Clone)]

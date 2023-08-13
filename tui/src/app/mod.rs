@@ -1,75 +1,107 @@
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 
-use comms::event;
+use anyhow::Context;
+use comms::command;
 use tokio::{
     net::TcpStream,
-    sync::{broadcast, RwLock},
+    sync::{
+        broadcast,
+        mpsc::{self, UnboundedReceiver, UnboundedSender},
+    },
 };
 use tokio_stream::StreamExt;
 
 use crate::{Interrupted, Terminator};
 
-pub(crate) use widget_handler::WidgetUsage;
+use self::action::Action;
+pub use self::state::{MessageBoxItem, RoomData, State};
 
-use self::{app::App, client::BoxedStream};
-
-pub mod app;
+pub mod action;
 mod client;
-mod input_box;
-mod room_list;
-mod shared_state;
-mod widget_handler;
+mod state;
 
 pub struct AppHolder {
-    app: Arc<RwLock<App>>,
-    event_stream: BoxedStream<anyhow::Result<event::Event>>,
-}
-
-pub async fn create_app_holder(terminator: Terminator) -> anyhow::Result<AppHolder> {
-    let stream = TcpStream::connect("localhost:8080").await?;
-    let (event_stream, command_writer) = client::split_stream(stream);
-
-    Ok(AppHolder {
-        app: Arc::new(RwLock::new(App::new(command_writer, terminator))),
-        event_stream,
-    })
+    state_tx: UnboundedSender<State>,
 }
 
 impl AppHolder {
-    pub fn take_app_reference(&self) -> Arc<RwLock<App>> {
-        Arc::clone(&self.app)
-    }
+    pub fn new() -> (Self, UnboundedReceiver<State>) {
+        let (state_tx, state_rx) = mpsc::unbounded_channel::<State>();
 
+        (AppHolder { state_tx }, state_rx)
+    }
+}
+
+impl AppHolder {
     pub async fn main_loop(
-        &mut self,
+        self,
+        mut terminator: Terminator,
+        mut action_rx: UnboundedReceiver<Action>,
         mut interrupt_rx: broadcast::Receiver<Interrupted>,
     ) -> anyhow::Result<Interrupted> {
+        let stream = TcpStream::connect("localhost:8080").await?;
+        let (mut event_stream, mut command_writer) = client::split_stream(stream);
+        let mut state = State::new();
+
+        // the initial state once
+
         let mut ticker = tokio::time::interval(Duration::from_secs(1));
 
         let result = loop {
             tokio::select! {
-                maybe_event = self.event_stream.next() => match maybe_event {
+                // Handle the server events as they come in
+                maybe_event = event_stream.next() => match maybe_event {
                     Some(Ok(event)) => {
-                        let mut app = self.app.write().await;
-
-                        app.handle_server_event(&event);
+                        state.handle_server_event(&event);
                     },
                     None => {
-                        break self.app.write().await.handle_server_disconnect()?;
+                        let _ = terminator.terminate(Interrupted::ServerDisconnected);
+
+                        break Interrupted::ServerDisconnected;
                     },
                     _ => (),
                 },
+                // Handle the actions coming from the UI
+                Some(action) = action_rx.recv() => match action {
+                    Action::SendMessage { content } => {
+                        if let Some(active_room) = state.active_room.as_ref() {
+                            command_writer
+                                .write(&command::UserCommand::SendMessage(
+                                    command::SendMessageCommand {
+                                        room: active_room.clone(),
+                                        content,
+                                    },
+                                ))
+                                .await
+                                .context("could not send message")?;
+                        }
+                    },
+                    Action::SelectRoom { room } => {
+                        if let Some(room_data) = state.room_data_map.get_mut(room.as_str()) {
+                            state.active_room = Some(room.clone());
+
+                            if !room_data.has_joined {
+                                command_writer
+                                    .write(&command::UserCommand::JoinRoom(command::JoinRoomCommand {
+                                        room,
+                                    }))
+                                    .await
+                                    .context("could not join room")?;
+                            }
+                        }
+                    },
+                },
                 // Tick to terminate the select every N milliseconds
                 _ = ticker.tick() => {
-                    let mut app = self.app.write().await;
-
-                    app.increment_timer();
+                    state.timer += 1;
                 },
                 // Catch and handle interrupt signal to gracefully shutdown
                 Ok(interrupted) = interrupt_rx.recv() => {
                     break interrupted;
                 }
             }
+
+            self.state_tx.send(state.clone())?;
         };
 
         Ok(result)

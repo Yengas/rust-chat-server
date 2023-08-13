@@ -1,8 +1,10 @@
 use ratatui::{prelude::*, widgets::*};
 
-use crate::app::{
-    app::{App, MessageBoxItem, Section},
-    WidgetUsage,
+use crate::app::MessageBoxItem;
+
+use super::{
+    chat_page::{ChatPage, Section},
+    widget_handler::WidgetUsage,
 };
 
 const NO_ROOM_SELECTED_MESSAGE: &str = "Join at least one room to start chatting!";
@@ -55,7 +57,7 @@ fn calculate_message_list_offset(height: u16, messages_len: usize) -> usize {
     messages_len.saturating_sub(height as usize - 2)
 }
 
-impl App {
+impl ChatPage {
     fn calculate_border_color(&self, section: Section) -> Color {
         match (self.active_section.as_ref(), &self.last_hovered_section) {
             (Some(active_section), _) if active_section.eq(&section) => Color::Yellow,
@@ -65,7 +67,7 @@ impl App {
     }
 }
 
-pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) {
+pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, chat_page: &ChatPage) {
     let [left, middle, right] = *Layout::default()
         .direction(Direction::Horizontal)
         .constraints(
@@ -93,14 +95,10 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
             panic!("The left layout should have 2 chunks")
         };
 
-    let active_room = {
-        let shared_state = app.shared_state.read().unwrap();
-
-        shared_state.active_room.clone()
-    };
-    let room_list: Vec<ListItem> = app
+    let active_room = chat_page.active_room();
+    let room_list: Vec<ListItem> = chat_page
         .room_list
-        .rooms
+        .rooms()
         .iter()
         .map(|room_state| {
             let room_tag = format!(
@@ -110,7 +108,7 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
             );
             let content = Line::from(Span::raw(room_tag));
 
-            let style = if app.room_list.state.selected().is_none()
+            let style = if chat_page.room_list.list_state.selected().is_none()
                 && active_room.is_some()
                 && active_room.as_ref().unwrap().eq(&room_state.name)
             {
@@ -129,7 +127,7 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .border_style(Style::new().fg(app.calculate_border_color(Section::RoomList)))
+                .border_style(Style::new().fg(chat_page.calculate_border_color(Section::RoomList)))
                 .title("Rooms"),
         )
         .highlight_style(
@@ -140,12 +138,12 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
         )
         .highlight_symbol(">");
 
-    let mut app_room_list_state = app.room_list.state.clone();
+    let mut app_room_list_state = chat_page.room_list.list_state.clone();
     frame.render_stateful_widget(room_list, container_room_list, &mut app_room_list_state);
 
     let user_info = Paragraph::new(Text::from(vec![
-        Line::from(format!("User: @{}", app.username)),
-        Line::from(format!("Chatting for: {} secs", app.timer)),
+        Line::from(format!("User: @{}", chat_page.username())),
+        Line::from(format!("Chatting for: {} secs", chat_page.timer())),
     ]))
     .block(
         Block::default()
@@ -168,15 +166,15 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
             panic!("The middle layout should have 3 chunks")
         };
 
-    let top_line = if let Some(active_room) = active_room
+    let top_line = if let Some(room_data) = active_room
         .as_ref()
-        .and_then(|active_room| app.room_list.rooms.iter().find(|r| r.name.eq(active_room)))
+        .and_then(|active_room| chat_page.get_room_data(active_room))
     {
         Line::from(vec![
             "on ".into(),
-            Span::from(format!("#{}", active_room.name)).bold(),
+            Span::from(format!("#{}", room_data.name)).bold(),
             " for ".into(),
-            Span::from(format!(r#""{}""#, active_room.description)).italic(),
+            Span::from(format!(r#""{}""#, room_data.description)).italic(),
         ])
     } else {
         Line::from(NO_ROOM_SELECTED_MESSAGE)
@@ -191,8 +189,8 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
     frame.render_widget(help_message, container_highlight);
 
     let messages = if let Some(active_room) = active_room.as_ref() {
-        app.room_data_map
-            .get(active_room)
+        chat_page
+            .get_room_data(active_room)
             .map(|room_data| {
                 let message_offset = calculate_message_list_offset(
                     container_messages.height,
@@ -207,7 +205,7 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
                                 Line::from(Span::raw(format!("@{}: {}", username, content)))
                             }
                             MessageBoxItem::Notification(content) => {
-                                Line::from(Span::raw(content).italic())
+                                Line::from(Span::raw(content.clone()).italic())
                             }
                         };
 
@@ -223,24 +221,24 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
         List::new(messages).block(Block::default().borders(Borders::ALL).title("Messages"));
     frame.render_widget(messages, container_messages);
 
-    let input = Paragraph::new(app.input_box.text.as_str())
+    let input = Paragraph::new(chat_page.input_box.text.as_str())
         .style(Style::default().fg(Color::Yellow))
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .fg(app.calculate_border_color(Section::MessageInput))
+                .fg(chat_page.calculate_border_color(Section::MessageInput))
                 .title("Input"),
         );
     frame.render_widget(input, container_input);
 
     // Cursor is hidden by default, so we need to make it visible if the input box is selected
-    if let Some(Section::MessageInput) = app.active_section {
+    if let Some(Section::MessageInput) = chat_page.active_section {
         // Make the cursor visible and ask ratatui to put it at the specified coordinates after
         // rendering
         frame.set_cursor(
             // Draw the cursor at the current position in the input field.
             // This position is can be controlled via the left and right arrow key
-            container_input.x + app.input_box.cursor_position as u16 + 1,
+            container_input.x + chat_page.input_box.cursor_position as u16 + 1,
             // Move one line down, from the border to the input line
             container_input.y + 1,
         )
@@ -260,8 +258,8 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
         };
 
     let room_users_list_items: Vec<ListItem> = if let Some(active_room) = active_room.as_ref() {
-        app.room_data_map
-            .get(active_room)
+        chat_page
+            .get_room_data(active_room)
             .map(|room_data| {
                 room_data
                     .users
@@ -279,7 +277,7 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, app: &App) 
 
     frame.render_widget(room_users_list, container_room_users);
 
-    let mut usage_text: Text = widget_usage_to_text(app.usage());
+    let mut usage_text: Text = widget_usage_to_text(chat_page.usage());
     usage_text.patch_style(Style::default().add_modifier(Modifier::RAPID_BLINK));
     let usage = Paragraph::new(usage_text)
         .wrap(Wrap { trim: true })

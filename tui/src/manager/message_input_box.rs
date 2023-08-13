@@ -1,53 +1,38 @@
-use std::{cell::RefCell, rc::Rc, sync::RwLock};
+use std::{cell::RefCell, rc::Rc};
 
 use async_trait::async_trait;
-use comms::command;
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
-use tokio::net::tcp::OwnedWriteHalf;
+use tokio::sync::mpsc::UnboundedSender;
 
-use super::client::CommandWriter;
+use crate::app::{action::Action, State};
 
-use super::{
-    shared_state::SharedState,
-    widget_handler::{WidgetHandler, WidgetKeyHandled, WidgetUsage, WidgetUsageKey},
-};
+use super::widget_handler::{WidgetHandler, WidgetKeyHandled, WidgetUsage, WidgetUsageKey};
 
-pub struct InputBox {
-    command_writer: Rc<RefCell<CommandWriter<OwnedWriteHalf>>>,
-    /// Shared state between widgets
-    shared_state: Rc<RwLock<SharedState>>,
+pub struct MessageInputBox {
+    action_tx: UnboundedSender<Action>,
+    /// Reference to the state
+    pub state: Rc<RefCell<State>>,
     /// Current value of the input box
     pub text: String,
     /// Position of cursor in the editor area.
     pub cursor_position: usize,
 }
 
-impl InputBox {
-    pub(super) fn new(
-        command_writer: Rc<RefCell<CommandWriter<OwnedWriteHalf>>>,
-        shared_state: Rc<RwLock<SharedState>>,
-    ) -> Self {
+impl MessageInputBox {
+    pub(super) fn new(action_tx: UnboundedSender<Action>, state: Rc<RefCell<State>>) -> Self {
         Self {
-            command_writer,
-            shared_state,
+            action_tx,
+            state,
             text: String::new(),
             cursor_position: 0,
         }
     }
 
-    async fn submit_message(&mut self, room: String) {
-        // TODO: handle the promise
-        let _ = {
-            self.command_writer
-                .borrow_mut()
-                .write(&command::UserCommand::SendMessage(
-                    command::SendMessageCommand {
-                        room,
-                        content: self.text.clone(),
-                    },
-                ))
-        }
-        .await;
+    async fn submit_message(&mut self) {
+        // TODO: handle the error scenario
+        let _ = self.action_tx.send(Action::SendMessage {
+            content: self.text.clone(),
+        });
 
         self.text.clear();
         self.reset_cursor();
@@ -101,7 +86,7 @@ impl InputBox {
 }
 
 #[async_trait(?Send)]
-impl WidgetHandler for InputBox {
+impl WidgetHandler for MessageInputBox {
     fn activate(&mut self) {}
 
     fn deactivate(&mut self) {
@@ -114,7 +99,7 @@ impl WidgetHandler for InputBox {
     }
 
     fn usage(&self) -> WidgetUsage {
-        if self.shared_state.read().unwrap().active_room.is_none() {
+        if self.state.borrow().active_room.is_none() {
             WidgetUsage {
                 description: Some("You can not send a message until you enter a room.".into()),
                 keys: vec![WidgetUsageKey {
@@ -143,11 +128,11 @@ impl WidgetHandler for InputBox {
         if key.kind != KeyEventKind::Press {
             return WidgetKeyHandled::Ok;
         }
-        let active_room = self.shared_state.read().unwrap().active_room.clone();
-        if let Some(active_room) = active_room {
+
+        if self.state.borrow().active_room.is_some() {
             match key.code {
                 KeyCode::Enter => {
-                    self.submit_message(active_room).await;
+                    self.submit_message().await;
                 }
                 KeyCode::Char(to_insert) => {
                     self.enter_char(to_insert);
