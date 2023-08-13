@@ -4,6 +4,7 @@ use std::{
     time::Duration,
 };
 
+use anyhow::Context;
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture, Event, EventStream},
     execute,
@@ -27,7 +28,7 @@ pub(crate) async fn main_loop(
     let mut ticker = tokio::time::interval(TICK_RATE);
     let mut crossterm_events = EventStream::new();
 
-    let result = loop {
+    let result: anyhow::Result<Interrupted> = loop {
         tokio::select! {
             // Tick to terminate the select every N milliseconds
             _ = ticker.tick() => (),
@@ -38,25 +39,30 @@ pub(crate) async fn main_loop(
 
                     app.handle_key_event(key).await;
                 },
-                None => break Interrupted::UserInt,
+                None => break Ok(Interrupted::UserInt),
                 _ => (),
             },
             // Catch and handle interrupt signal to gracefully shutdown
             Ok(interrupted) = interrupt_rx.recv() => {
-                break interrupted;
+                break Ok(interrupted);
             }
         }
 
         {
             let app = app.read().await;
 
-            terminal.draw(|frame| rendering::render_app_too_frame(frame, &app))?;
+            if let Err(err) = terminal
+                .draw(|frame| rendering::render_app_too_frame(frame, &app))
+                .context("could not render to the terminal")
+            {
+                break Err(err);
+            }
         }
     };
 
     restore_terminal(&mut terminal)?;
 
-    Ok(result)
+    Ok(result?)
 }
 
 fn setup_terminal() -> anyhow::Result<Terminal<CrosstermBackend<Stdout>>> {
