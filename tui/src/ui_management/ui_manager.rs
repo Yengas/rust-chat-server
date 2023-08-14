@@ -17,25 +17,20 @@ use tokio::sync::{
 use tokio_stream::StreamExt;
 
 use crate::{
-    app::{action::Action, State},
+    state_store::{action::Action, State},
+    ui_management::rendering,
     Interrupted,
 };
 
-use self::{chat_page::ChatPage, widget_handler::WidgetHandler};
-
-mod chat_page;
-mod message_input_box;
-mod rendering;
-mod room_list;
-mod widget_handler;
+use super::{chat_page::ChatPage, widget_handler::WidgetHandler};
 
 const RENDERING_TICK_RATE: Duration = Duration::from_millis(250);
 
-pub struct Manager {
+pub struct UiManager {
     action_tx: mpsc::UnboundedSender<Action>,
 }
 
-impl Manager {
+impl UiManager {
     pub fn new() -> (Self, UnboundedReceiver<Action>) {
         let (action_tx, action_rx) = mpsc::unbounded_channel();
 

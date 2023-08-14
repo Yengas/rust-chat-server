@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use tokio::sync::mpsc::UnboundedSender;
 
-use crate::app::{action::Action, RoomData, State};
+use crate::state_store::{action::Action, RoomData, State};
 
 use super::{
     message_input_box::MessageInputBox,

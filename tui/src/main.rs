@@ -1,22 +1,22 @@
-use app::AppHolder;
-use manager::Manager;
+use state_store::StateStore;
 use termination::create_termination;
+use ui_management::UiManager;
 
-pub(self) mod app;
-mod manager;
+mod state_store;
 mod termination;
+mod ui_management;
 
-pub(self) use termination::{Interrupted, Terminator};
+use termination::{Interrupted, Terminator};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let (terminator, mut interrupt_rx) = create_termination();
-    let (app_holder, state_rx) = AppHolder::new();
-    let (manager, action_rx) = Manager::new();
+    let (state_store, state_rx) = StateStore::new();
+    let (ui_manager, action_rx) = UiManager::new();
 
     tokio::try_join!(
-        app_holder.main_loop(terminator, action_rx, interrupt_rx.resubscribe()),
-        manager.main_loop(state_rx, interrupt_rx.resubscribe()),
+        state_store.main_loop(terminator, action_rx, interrupt_rx.resubscribe()),
+        ui_manager.main_loop(state_rx, interrupt_rx.resubscribe()),
     )?;
 
     if let Ok(reason) = interrupt_rx.recv().await {

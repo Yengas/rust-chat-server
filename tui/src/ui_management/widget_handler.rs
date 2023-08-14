@@ -1,7 +1,7 @@
 use crossterm::event::KeyEvent;
 use tokio::sync::mpsc::UnboundedSender;
 
-use crate::app::{action::Action, State};
+use crate::state_store::{action::Action, State};
 
 #[derive(Debug, Clone)]
 pub struct WidgetUsageKey {

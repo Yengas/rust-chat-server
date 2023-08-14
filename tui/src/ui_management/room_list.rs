@@ -2,7 +2,7 @@ use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::widgets::ListState;
 use tokio::sync::mpsc::UnboundedSender;
 
-use crate::app::{action::Action, State};
+use crate::state_store::{action::Action, State};
 
 use super::widget_handler::{WidgetHandler, WidgetKeyHandled, WidgetUsage, WidgetUsageKey};
 

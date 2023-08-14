@@ -13,26 +13,21 @@ use tokio_stream::StreamExt;
 
 use crate::{Interrupted, Terminator};
 
-use self::action::Action;
-pub use self::state::{MessageBoxItem, RoomData, State};
+use super::{action::Action, client, State};
 
-pub mod action;
-mod client;
-mod state;
-
-pub struct AppHolder {
+pub struct StateStore {
     state_tx: UnboundedSender<State>,
 }
 
-impl AppHolder {
+impl StateStore {
     pub fn new() -> (Self, UnboundedReceiver<State>) {
         let (state_tx, state_rx) = mpsc::unbounded_channel::<State>();
 
-        (AppHolder { state_tx }, state_rx)
+        (StateStore { state_tx }, state_rx)
     }
 }
 
-impl AppHolder {
+impl StateStore {
     pub async fn main_loop(
         self,
         mut terminator: Terminator,
@@ -62,6 +57,7 @@ impl AppHolder {
                     _ => (),
                 },
                 // Handle the actions coming from the UI
+                // and process them to do async operations
                 Some(action) = action_rx.recv() => match action {
                     Action::SendMessage { content } => {
                         if let Some(active_room) = state.active_room.as_ref() {

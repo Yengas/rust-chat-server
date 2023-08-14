@@ -1,6 +1,6 @@
 use ratatui::{prelude::*, widgets::*};
 
-use crate::app::MessageBoxItem;
+use crate::state_store::MessageBoxItem;
 
 use super::{
     chat_page::{ChatPage, Section},
