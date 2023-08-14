@@ -6,9 +6,9 @@ use tokio::sync::mpsc::UnboundedSender;
 use crate::state_store::{action::Action, RoomData, State};
 
 use super::{
+    framework::widget_handler::{WidgetHandler, WidgetKeyHandled, WidgetUsage, WidgetUsageKey},
     message_input_box::MessageInputBox,
     room_list::RoomList,
-    widget_handler::{WidgetHandler, WidgetKeyHandled, WidgetUsage, WidgetUsageKey},
 };
 
 #[derive(Debug, Clone, PartialEq)]

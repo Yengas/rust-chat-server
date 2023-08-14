@@ -4,7 +4,7 @@ use crate::state_store::MessageBoxItem;
 
 use super::{
     chat_page::{ChatPage, Section},
-    widget_handler::{WidgetHandler, WidgetUsage},
+    framework::widget_handler::{WidgetHandler, WidgetUsage},
 };
 
 const NO_ROOM_SELECTED_MESSAGE: &str = "Join at least one room to start chatting!";

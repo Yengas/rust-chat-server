@@ -15,7 +15,7 @@ pub struct WidgetUsage {
     pub keys: Vec<WidgetUsageKey>,
 }
 
-pub(super) trait WidgetHandler {
+pub trait WidgetHandler {
     fn new(state: &State, action_tx: UnboundedSender<Action>) -> Self
     where
         Self: Sized;
@@ -33,7 +33,7 @@ pub(super) trait WidgetHandler {
 }
 
 #[derive(Debug, Clone)]
-pub(super) enum WidgetKeyHandled {
+pub enum WidgetKeyHandled {
     /// No further action needed
     Ok,
     /// Widget needs to lose focus

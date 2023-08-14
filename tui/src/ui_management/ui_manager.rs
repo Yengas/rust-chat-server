@@ -22,7 +22,7 @@ use crate::{
     Interrupted,
 };
 
-use super::{chat_page::ChatPage, widget_handler::WidgetHandler};
+use super::{chat_page::ChatPage, framework::widget_handler::WidgetHandler};
 
 const RENDERING_TICK_RATE: Duration = Duration::from_millis(250);
 

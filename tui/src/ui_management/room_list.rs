@@ -4,7 +4,9 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use crate::state_store::{action::Action, State};
 
-use super::widget_handler::{WidgetHandler, WidgetKeyHandled, WidgetUsage, WidgetUsageKey};
+use super::framework::widget_handler::{
+    WidgetHandler, WidgetKeyHandled, WidgetUsage, WidgetUsageKey,
+};
 
 pub struct RoomState {
     pub name: String,
