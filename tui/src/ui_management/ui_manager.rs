@@ -18,11 +18,12 @@ use tokio_stream::StreamExt;
 
 use crate::{
     state_store::{action::Action, State},
-    ui_management::framework::component::ComponentRender,
+    ui_management::{
+        framework::component::{Component, ComponentRender},
+        pages::chat_page::ChatPage,
+    },
     Interrupted,
 };
-
-use super::{chat_page::ChatPage, framework::component::Component};
 
 const RENDERING_TICK_RATE: Duration = Duration::from_millis(250);
 

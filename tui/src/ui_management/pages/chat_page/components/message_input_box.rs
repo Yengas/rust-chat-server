@@ -12,7 +12,7 @@ use crate::{
     ui_management::framework::usage::{UsageInfo, UsageInfoLine},
 };
 
-use super::framework::{
+use crate::ui_management::framework::{
     component::{Component, ComponentKeyHandled, ComponentRender},
     usage::HasUsageInfo,
 };

@@ -10,7 +10,7 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use crate::state_store::{action::Action, State};
 
-use super::framework::{
+use crate::ui_management::framework::{
     component::{Component, ComponentKeyHandled, ComponentRender},
     usage::{HasUsageInfo, UsageInfo, UsageInfoLine},
 };

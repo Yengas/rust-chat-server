@@ -6,13 +6,13 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use crate::state_store::{action::Action, MessageBoxItem, RoomData, State};
 
-use super::{
-    framework::{
-        component::{Component, ComponentKeyHandled, ComponentRender},
-        usage::{widget_usage_to_text, HasUsageInfo, UsageInfo, UsageInfoLine},
-    },
+use super::components::{
     message_input_box::{self, MessageInputBox},
     room_list::{self, RoomList},
+};
+use crate::ui_management::framework::{
+    component::{Component, ComponentKeyHandled, ComponentRender},
+    usage::{widget_usage_to_text, HasUsageInfo, UsageInfo, UsageInfoLine},
 };
 
 #[derive(Debug, Clone, PartialEq)]
