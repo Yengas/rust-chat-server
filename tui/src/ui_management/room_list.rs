@@ -1,11 +1,18 @@
 use crossterm::event::{KeyCode, KeyEvent};
-use ratatui::widgets::ListState;
+use ratatui::{
+    prelude::{Backend, Rect},
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
+    widgets::{Block, Borders, List, ListItem, ListState},
+    Frame,
+};
 use tokio::sync::mpsc::UnboundedSender;
 
 use crate::state_store::{action::Action, State};
 
-use super::framework::widget_handler::{
-    WidgetHandler, WidgetKeyHandled, WidgetUsage, WidgetUsageKey,
+use super::framework::{
+    component::{Component, ComponentKeyHandled, ComponentRender},
+    usage::{HasUsageInfo, UsageInfo, UsageInfoLine},
 };
 
 pub struct RoomState {
@@ -100,7 +107,7 @@ impl RoomList {
     }
 }
 
-impl WidgetHandler for RoomList {
+impl Component for RoomList {
     fn new(state: &State, action_tx: UnboundedSender<Action>) -> Self {
         Self {
             action_tx,
@@ -141,27 +148,7 @@ impl WidgetHandler for RoomList {
         "Room List"
     }
 
-    fn usage(&self) -> WidgetUsage {
-        WidgetUsage {
-            description: Some("Select the room to talk in".into()),
-            keys: vec![
-                WidgetUsageKey {
-                    keys: vec!["Esc".into()],
-                    description: "to cancel".into(),
-                },
-                WidgetUsageKey {
-                    keys: vec!["↑".into(), "↓".into()],
-                    description: "to navigate".into(),
-                },
-                WidgetUsageKey {
-                    keys: vec!["Enter".into()],
-                    description: "to join room".into(),
-                },
-            ],
-        }
-    }
-
-    fn handle_key_event(&mut self, key: KeyEvent) -> WidgetKeyHandled {
+    fn handle_key_event(&mut self, key: KeyEvent) -> ComponentKeyHandled {
         match key.code {
             KeyCode::Up => {
                 self.previous();
@@ -180,11 +167,87 @@ impl WidgetHandler for RoomList {
                     room: room_state.name.clone(),
                 });
 
-                return WidgetKeyHandled::LoseFocus;
+                return ComponentKeyHandled::LoseFocus;
             }
             _ => (),
         }
 
-        WidgetKeyHandled::Ok
+        ComponentKeyHandled::Ok
+    }
+}
+
+pub struct RenderProps {
+    pub border_color: Color,
+    pub area: Rect,
+}
+
+impl ComponentRender<RenderProps> for RoomList {
+    fn render<B: Backend>(&self, frame: &mut Frame<B>, props: RenderProps) {
+        let active_room = self.props.active_room.clone();
+        let room_list: Vec<ListItem> = self
+            .rooms()
+            .iter()
+            .map(|room_state| {
+                let room_tag = format!(
+                    "#{}{}",
+                    room_state.name,
+                    if room_state.has_unread { "*" } else { "" }
+                );
+                let content = Line::from(Span::raw(room_tag));
+
+                let style = if self.list_state.selected().is_none()
+                    && active_room.is_some()
+                    && active_room.as_ref().unwrap().eq(&room_state.name)
+                {
+                    Style::default().add_modifier(Modifier::BOLD)
+                } else if room_state.has_unread {
+                    Style::default().add_modifier(Modifier::RAPID_BLINK | Modifier::ITALIC)
+                } else {
+                    Style::default()
+                };
+
+                ListItem::new(content).style(style.bg(Color::Reset))
+            })
+            .collect();
+
+        let room_list = List::new(room_list)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::new().fg(props.border_color))
+                    .title("Rooms"),
+            )
+            .highlight_style(
+                Style::default()
+                    // yellow that would work for both dark / light modes
+                    .bg(Color::Rgb(255, 223, 102))
+                    .add_modifier(Modifier::BOLD),
+            )
+            .highlight_symbol(">");
+
+        let mut app_room_list_state = self.list_state.clone();
+        frame.render_stateful_widget(room_list, props.area, &mut app_room_list_state);
+    }
+}
+
+impl HasUsageInfo for RoomList {
+    fn usage_info(&self) -> UsageInfo {
+        UsageInfo {
+            description: Some("Select the room to talk in".into()),
+            lines: vec![
+                UsageInfoLine {
+                    keys: vec!["Esc".into()],
+                    description: "to cancel".into(),
+                },
+                UsageInfoLine {
+                    keys: vec!["↑".into(), "↓".into()],
+                    description: "to navigate".into(),
+                },
+                UsageInfoLine {
+                    keys: vec!["Enter".into()],
+                    description: "to join room".into(),
+                },
+            ],
+        }
     }
 }

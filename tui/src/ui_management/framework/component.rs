@@ -1,21 +1,10 @@
 use crossterm::event::KeyEvent;
+use ratatui::{prelude::Backend, Frame};
 use tokio::sync::mpsc::UnboundedSender;
 
 use crate::state_store::{action::Action, State};
 
-#[derive(Debug, Clone)]
-pub struct WidgetUsageKey {
-    pub keys: Vec<String>,
-    pub description: String,
-}
-
-#[derive(Debug, Clone)]
-pub struct WidgetUsage {
-    pub description: Option<String>,
-    pub keys: Vec<WidgetUsageKey>,
-}
-
-pub trait WidgetHandler {
+pub trait Component {
     fn new(state: &State, action_tx: UnboundedSender<Action>) -> Self
     where
         Self: Sized;
@@ -27,15 +16,17 @@ pub trait WidgetHandler {
 
     fn activate(&mut self);
     fn deactivate(&mut self);
-    fn handle_key_event(&mut self, key: KeyEvent) -> WidgetKeyHandled;
+    fn handle_key_event(&mut self, key: KeyEvent) -> ComponentKeyHandled;
+}
 
-    fn usage(&self) -> WidgetUsage;
+pub trait ComponentRender<Props> {
+    fn render<B: Backend>(&self, frame: &mut Frame<B>, props: Props);
 }
 
 #[derive(Debug, Clone)]
-pub enum WidgetKeyHandled {
+pub enum ComponentKeyHandled {
     /// No further action needed
     Ok,
-    /// Widget needs to lose focus
+    /// Component needs to lose focus
     LoseFocus,
 }

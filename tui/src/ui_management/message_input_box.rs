@@ -1,10 +1,20 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
+use ratatui::{
+    prelude::{Backend, Rect},
+    style::{Color, Style, Stylize},
+    widgets::{Block, Borders, Paragraph},
+    Frame,
+};
 use tokio::sync::mpsc::UnboundedSender;
 
-use crate::state_store::{action::Action, State};
+use crate::{
+    state_store::{action::Action, State},
+    ui_management::framework::usage::{UsageInfo, UsageInfoLine},
+};
 
-use super::framework::widget_handler::{
-    WidgetHandler, WidgetKeyHandled, WidgetUsage, WidgetUsageKey,
+use super::framework::{
+    component::{Component, ComponentKeyHandled, ComponentRender},
+    usage::HasUsageInfo,
 };
 
 struct Props {
@@ -89,7 +99,7 @@ impl MessageInputBox {
     }
 }
 
-impl WidgetHandler for MessageInputBox {
+impl Component for MessageInputBox {
     fn new(state: &State, action_tx: UnboundedSender<Action>) -> Self {
         Self {
             action_tx,
@@ -121,35 +131,9 @@ impl WidgetHandler for MessageInputBox {
         "Message Input"
     }
 
-    fn usage(&self) -> WidgetUsage {
-        if self.props.active_room.is_none() {
-            WidgetUsage {
-                description: Some("You can not send a message until you enter a room.".into()),
-                keys: vec![WidgetUsageKey {
-                    keys: vec!["Esc".into()],
-                    description: "to cancel".into(),
-                }],
-            }
-        } else {
-            WidgetUsage {
-                description: Some("Type your message to send a message to the active room".into()),
-                keys: vec![
-                    WidgetUsageKey {
-                        keys: vec!["Esc".into()],
-                        description: "to cancel".into(),
-                    },
-                    WidgetUsageKey {
-                        keys: vec!["Enter".into()],
-                        description: "to send your message".into(),
-                    },
-                ],
-            }
-        }
-    }
-
-    fn handle_key_event(&mut self, key: KeyEvent) -> WidgetKeyHandled {
+    fn handle_key_event(&mut self, key: KeyEvent) -> ComponentKeyHandled {
         if key.kind != KeyEventKind::Press {
-            return WidgetKeyHandled::Ok;
+            return ComponentKeyHandled::Ok;
         }
 
         if self.props.active_room.is_some() {
@@ -173,6 +157,67 @@ impl WidgetHandler for MessageInputBox {
             }
         }
 
-        WidgetKeyHandled::Ok
+        ComponentKeyHandled::Ok
+    }
+}
+
+pub struct RenderProps {
+    pub area: Rect,
+    pub border_color: Color,
+    pub show_cursor: bool,
+}
+
+impl ComponentRender<RenderProps> for MessageInputBox {
+    fn render<B: Backend>(&self, frame: &mut Frame<B>, props: RenderProps) {
+        let input = Paragraph::new(self.text.as_str())
+            .style(Style::default().fg(Color::Yellow))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .fg(props.border_color)
+                    .title("Input"),
+            );
+        frame.render_widget(input, props.area);
+
+        // Cursor is hidden by default, so we need to make it visible if the input box is selected
+        if props.show_cursor {
+            // Make the cursor visible and ask ratatui to put it at the specified coordinates after
+            // rendering
+            frame.set_cursor(
+                // Draw the cursor at the current position in the input field.
+                // This position is can be controlled via the left and right arrow key
+                props.area.x + self.cursor_position as u16 + 1,
+                // Move one line down, from the border to the input line
+                props.area.y + 1,
+            )
+        }
+    }
+}
+
+impl HasUsageInfo for MessageInputBox {
+    fn usage_info(&self) -> UsageInfo {
+        if self.props.active_room.is_none() {
+            UsageInfo {
+                description: Some("You can not send a message until you enter a room.".into()),
+                lines: vec![UsageInfoLine {
+                    keys: vec!["Esc".into()],
+                    description: "to cancel".into(),
+                }],
+            }
+        } else {
+            UsageInfo {
+                description: Some("Type your message to send a message to the active room".into()),
+                lines: vec![
+                    UsageInfoLine {
+                        keys: vec!["Esc".into()],
+                        description: "to cancel".into(),
+                    },
+                    UsageInfoLine {
+                        keys: vec!["Enter".into()],
+                        description: "to send your message".into(),
+                    },
+                ],
+            }
+        }
     }
 }

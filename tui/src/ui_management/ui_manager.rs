@@ -18,11 +18,11 @@ use tokio_stream::StreamExt;
 
 use crate::{
     state_store::{action::Action, State},
-    ui_management::rendering,
+    ui_management::framework::component::ComponentRender,
     Interrupted,
 };
 
-use super::{chat_page::ChatPage, framework::widget_handler::WidgetHandler};
+use super::{chat_page::ChatPage, framework::component::Component};
 
 const RENDERING_TICK_RATE: Duration = Duration::from_millis(250);
 
@@ -76,9 +76,7 @@ impl UiManager {
             }
 
             if let Err(err) = terminal
-                .draw(|frame|
-                    // Render the ChatPage
-                    rendering::render_app_too_frame(frame, &chat_page))
+                .draw(|frame| chat_page.render(frame, ()))
                 .context("could not render to the terminal")
             {
                 break Err(err);
