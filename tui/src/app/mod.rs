@@ -90,6 +90,11 @@ impl AppHolder {
                             }
                         }
                     },
+                    Action::Exit => {
+                        let _ = terminator.terminate(Interrupted::UserInt);
+
+                        break Interrupted::UserInt;
+                    }
                 },
                 // Tick to terminate the select every N milliseconds
                 _ = ticker.tick() => {

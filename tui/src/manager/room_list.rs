@@ -1,6 +1,3 @@
-use std::{cell::RefCell, rc::Rc};
-
-use async_trait::async_trait;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::widgets::ListState;
 use tokio::sync::mpsc::UnboundedSender;
@@ -16,28 +13,47 @@ pub struct RoomState {
     pub has_unread: bool,
 }
 
+struct Props {
+    /// List of rooms and current state of those rooms
+    rooms: Vec<RoomState>,
+    /// Current active room
+    active_room: Option<String>,
+}
+
+impl From<&State> for Props {
+    fn from(state: &State) -> Self {
+        Self {
+            rooms: state
+                .room_data_map
+                .iter()
+                .map(|(name, room_data)| RoomState {
+                    name: name.clone(),
+                    description: room_data.description.clone(),
+                    has_joined: room_data.has_joined,
+                    // TODO: fix has unread
+                    has_unread: false,
+                })
+                .collect(),
+            active_room: state.active_room.clone(),
+        }
+    }
+}
+
 pub struct RoomList {
     /// Sending actions to the state store
     action_tx: UnboundedSender<Action>,
-    /// Reference to the state
-    state: Rc<RefCell<State>>,
+    /// State Mapped RoomList Props
+    props: Props,
+    // Internal Component State
     /// List with optional selection and current offset
     pub list_state: ListState,
 }
 
 impl RoomList {
-    pub(super) fn new(action_tx: UnboundedSender<Action>, state: Rc<RefCell<State>>) -> Self {
-        Self {
-            action_tx,
-            state,
-            list_state: ListState::default(),
-        }
-    }
-
     fn next(&mut self) {
         let i = match self.list_state.selected() {
             Some(i) => {
-                if i >= self.room_len() - 1 {
+                if i >= self.props.rooms.len() - 1 {
                     0
                 } else {
                     i + 1
@@ -52,7 +68,7 @@ impl RoomList {
         let i = match self.list_state.selected() {
             Some(i) => {
                 if i == 0 {
-                    self.room_len() - 1
+                    self.props.rooms.len() - 1
                 } else {
                     i - 1
                 }
@@ -63,27 +79,13 @@ impl RoomList {
         self.list_state.select(Some(i));
     }
 
-    pub(super) fn rooms(&self) -> Vec<RoomState> {
-        self.state
-            .borrow()
-            .room_data_map
-            .iter()
-            .map(|(name, room_data)| RoomState {
-                name: name.clone(),
-                description: room_data.description.clone(),
-                has_joined: room_data.has_joined,
-                // TODO: fix has unread
-                has_unread: false,
-            })
-            .collect()
-    }
-
-    fn room_len(&self) -> usize {
-        self.state.borrow().room_data_map.len()
+    pub(super) fn rooms(&self) -> &Vec<RoomState> {
+        &self.props.rooms
     }
 
     fn get_room_idx(&self, name: &str) -> Option<usize> {
-        self.rooms()
+        self.props
+            .rooms
             .iter()
             .enumerate()
             .find_map(|(idx, room_state)| {
@@ -96,12 +98,29 @@ impl RoomList {
     }
 }
 
-#[async_trait(?Send)]
 impl WidgetHandler for RoomList {
+    fn new(state: &State, action_tx: UnboundedSender<Action>) -> Self {
+        Self {
+            action_tx,
+            props: Props::from(state),
+            //
+            list_state: ListState::default(),
+        }
+    }
+
+    fn move_with_state(self, state: &State) -> Self
+    where
+        Self: Sized,
+    {
+        Self {
+            props: Props::from(state),
+            ..self
+        }
+    }
+
     fn activate(&mut self) {
         let idx: usize = self
-            .state
-            .borrow()
+            .props
             .active_room
             .as_ref()
             .and_then(|room_name| self.get_room_idx(room_name.as_str()))
@@ -140,7 +159,7 @@ impl WidgetHandler for RoomList {
         }
     }
 
-    async fn handle_key_event(&mut self, key: KeyEvent) -> WidgetKeyHandled {
+    fn handle_key_event(&mut self, key: KeyEvent) -> WidgetKeyHandled {
         match key.code {
             KeyCode::Up => {
                 self.previous();

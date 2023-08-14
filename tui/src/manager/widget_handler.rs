@@ -1,5 +1,7 @@
-use async_trait::async_trait;
 use crossterm::event::KeyEvent;
+use tokio::sync::mpsc::UnboundedSender;
+
+use crate::app::{action::Action, State};
 
 #[derive(Debug, Clone)]
 pub struct WidgetUsageKey {
@@ -13,12 +15,20 @@ pub struct WidgetUsage {
     pub keys: Vec<WidgetUsageKey>,
 }
 
-#[async_trait(?Send)]
 pub(super) trait WidgetHandler {
+    fn new(state: &State, action_tx: UnboundedSender<Action>) -> Self
+    where
+        Self: Sized;
+    fn move_with_state(self, state: &State) -> Self
+    where
+        Self: Sized;
+
+    fn name(&self) -> &str;
+
     fn activate(&mut self);
     fn deactivate(&mut self);
-    fn name(&self) -> &str;
-    async fn handle_key_event(&mut self, key: KeyEvent) -> WidgetKeyHandled;
+    fn handle_key_event(&mut self, key: KeyEvent) -> WidgetKeyHandled;
+
     fn usage(&self) -> WidgetUsage;
 }
 

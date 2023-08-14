@@ -72,9 +72,15 @@ impl State {
                     match event.status {
                         event::RoomParticipationStatus::Joined => {
                             room_data.users.insert(event.username.clone());
+                            if event.username == self.username {
+                                room_data.has_joined = true;
+                            }
                         }
                         event::RoomParticipationStatus::Left => {
                             room_data.users.remove(&event.username);
+                            if event.username == self.username {
+                                room_data.has_joined = false;
+                            }
                         }
                     }
 

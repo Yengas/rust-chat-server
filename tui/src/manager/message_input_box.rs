@@ -1,6 +1,3 @@
-use std::{cell::RefCell, rc::Rc};
-
-use async_trait::async_trait;
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -8,10 +5,24 @@ use crate::app::{action::Action, State};
 
 use super::widget_handler::{WidgetHandler, WidgetKeyHandled, WidgetUsage, WidgetUsageKey};
 
+struct Props {
+    /// Active room that the user is chatting in
+    active_room: Option<String>,
+}
+
+impl From<&State> for Props {
+    fn from(state: &State) -> Self {
+        Self {
+            active_room: state.active_room.clone(),
+        }
+    }
+}
+
 pub struct MessageInputBox {
     action_tx: UnboundedSender<Action>,
-    /// Reference to the state
-    pub state: Rc<RefCell<State>>,
+    /// State Mapped MessageInputBox Props
+    props: Props,
+    // Internal State for the Component
     /// Current value of the input box
     pub text: String,
     /// Position of cursor in the editor area.
@@ -19,16 +30,7 @@ pub struct MessageInputBox {
 }
 
 impl MessageInputBox {
-    pub(super) fn new(action_tx: UnboundedSender<Action>, state: Rc<RefCell<State>>) -> Self {
-        Self {
-            action_tx,
-            state,
-            text: String::new(),
-            cursor_position: 0,
-        }
-    }
-
-    async fn submit_message(&mut self) {
+    fn submit_message(&mut self) {
         // TODO: handle the error scenario
         let _ = self.action_tx.send(Action::SendMessage {
             content: self.text.clone(),
@@ -85,8 +87,27 @@ impl MessageInputBox {
     }
 }
 
-#[async_trait(?Send)]
 impl WidgetHandler for MessageInputBox {
+    fn new(state: &State, action_tx: UnboundedSender<Action>) -> Self {
+        Self {
+            action_tx,
+            props: Props::from(state),
+            //
+            text: String::new(),
+            cursor_position: 0,
+        }
+    }
+
+    fn move_with_state(self, state: &State) -> Self
+    where
+        Self: Sized,
+    {
+        Self {
+            props: Props::from(state),
+            ..self
+        }
+    }
+
     fn activate(&mut self) {}
 
     fn deactivate(&mut self) {
@@ -99,7 +120,7 @@ impl WidgetHandler for MessageInputBox {
     }
 
     fn usage(&self) -> WidgetUsage {
-        if self.state.borrow().active_room.is_none() {
+        if self.props.active_room.is_none() {
             WidgetUsage {
                 description: Some("You can not send a message until you enter a room.".into()),
                 keys: vec![WidgetUsageKey {
@@ -124,15 +145,15 @@ impl WidgetHandler for MessageInputBox {
         }
     }
 
-    async fn handle_key_event(&mut self, key: KeyEvent) -> WidgetKeyHandled {
+    fn handle_key_event(&mut self, key: KeyEvent) -> WidgetKeyHandled {
         if key.kind != KeyEventKind::Press {
             return WidgetKeyHandled::Ok;
         }
 
-        if self.state.borrow().active_room.is_some() {
+        if self.props.active_room.is_some() {
             match key.code {
                 KeyCode::Enter => {
-                    self.submit_message().await;
+                    self.submit_message();
                 }
                 KeyCode::Char(to_insert) => {
                     self.enter_char(to_insert);

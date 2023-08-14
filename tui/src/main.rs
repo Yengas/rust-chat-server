@@ -15,8 +15,8 @@ async fn main() -> anyhow::Result<()> {
     let (manager, action_rx) = Manager::new();
 
     tokio::try_join!(
-        app_holder.main_loop(terminator.clone(), action_rx, interrupt_rx.resubscribe()),
-        manager.main_loop(terminator, state_rx, interrupt_rx.resubscribe()),
+        app_holder.main_loop(terminator, action_rx, interrupt_rx.resubscribe()),
+        manager.main_loop(state_rx, interrupt_rx.resubscribe()),
     )?;
 
     if let Ok(reason) = interrupt_rx.recv().await {

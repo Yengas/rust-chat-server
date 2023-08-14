@@ -4,7 +4,7 @@ use crate::app::MessageBoxItem;
 
 use super::{
     chat_page::{ChatPage, Section},
-    widget_handler::WidgetUsage,
+    widget_handler::{WidgetHandler, WidgetUsage},
 };
 
 const NO_ROOM_SELECTED_MESSAGE: &str = "Join at least one room to start chatting!";
@@ -95,7 +95,7 @@ pub(crate) fn render_app_too_frame<B: Backend>(frame: &mut Frame<B>, chat_page: 
             panic!("The left layout should have 2 chunks")
         };
 
-    let active_room = chat_page.active_room();
+    let active_room = chat_page.active_room().clone();
     let room_list: Vec<ListItem> = chat_page
         .room_list
         .rooms()

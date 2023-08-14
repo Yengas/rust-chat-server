@@ -7,7 +7,6 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.72"
-async-trait = "0.1.72"
 comms = { path = "../comms" }
 crossterm = { version = "0.26.1", features = ["event-stream"] }
 rand = "0.8.5"

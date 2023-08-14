@@ -1,7 +1,5 @@
 use std::{
-    cell::RefCell,
     io::{self, Stdout},
-    rc::Rc,
     time::Duration,
 };
 
@@ -20,10 +18,10 @@ use tokio_stream::StreamExt;
 
 use crate::{
     app::{action::Action, State},
-    Interrupted, Terminator,
+    Interrupted,
 };
 
-use self::chat_page::ChatPage;
+use self::{chat_page::ChatPage, widget_handler::WidgetHandler};
 
 mod chat_page;
 mod message_input_box;
@@ -46,13 +44,15 @@ impl Manager {
 
     pub async fn main_loop(
         self,
-        terminator: Terminator,
         mut state_rx: UnboundedReceiver<State>,
         mut interrupt_rx: broadcast::Receiver<Interrupted>,
     ) -> anyhow::Result<Interrupted> {
-        let state = state_rx.recv().await.unwrap();
-        let state = Rc::new(RefCell::new(state));
-        let mut chat_page = ChatPage::new(terminator, self.action_tx.clone(), Rc::clone(&state));
+        // consume the first state to initialize the ui app
+        let mut chat_page = {
+            let state = state_rx.recv().await.unwrap();
+
+            ChatPage::new(&state, self.action_tx.clone())
+        };
 
         let mut terminal = setup_terminal()?;
         let mut ticker = tokio::time::interval(RENDERING_TICK_RATE);
@@ -65,14 +65,14 @@ impl Manager {
                 // Catch and handle crossterm events
                maybe_event = crossterm_events.next() => match maybe_event {
                     Some(Ok(Event::Key(key)))  => {
-                        chat_page.handle_key_event(key).await;
+                        chat_page.handle_key_event(key);
                     },
                     None => break Ok(Interrupted::UserInt),
                     _ => (),
                 },
                 // Handle state updates
-                Some(new_state) = state_rx.recv() => {
-                    state.replace(new_state);
+                Some(state) = state_rx.recv() => {
+                    chat_page = chat_page.move_with_state(&state);
                 },
                 // Catch and handle interrupt signal to gracefully shutdown
                 Ok(interrupted) = interrupt_rx.recv() => {
