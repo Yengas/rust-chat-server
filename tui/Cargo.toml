@@ -6,12 +6,12 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.72"
+anyhow = "1.0.75"
 comms = { path = "../comms" }
-crossterm = { version = "0.26.1", features = ["event-stream"] }
+crossterm = { version = "0.27.0", features = ["event-stream"] }
 rand = "0.8.5"
 ratatui = { version = "0.22.0", features = ["all-widgets"] }
-serde = "1.0.181"
-serde_json = "1.0.104"
-tokio = { version = "1.29.1", features = ["full"] }
+serde = "1.0.186"
+serde_json = "1.0.105"
+tokio = { version = "1.32.0", features = ["full"] }
 tokio-stream = { version = "0.1.14", features = ["io-util"] }
