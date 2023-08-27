@@ -51,12 +51,11 @@ pub struct State {
     pub username: String,
     /// Storage of room data
     pub room_data_map: HashMap<String, RoomData>,
-    /// Timer since app was open
+    /// Timer since app was opened
     pub timer: usize,
 }
-
-impl State {
-    pub(super) fn new() -> Self {
+impl Default for State {
+    fn default() -> Self {
         State {
             server_connection_status: ServerConnectionStatus::Uninitalized,
             active_room: None,
@@ -65,7 +64,9 @@ impl State {
             timer: 0,
         }
     }
+}
 
+impl State {
     pub(super) fn handle_server_event(&mut self, event: &event::Event) {
         match event {
             event::Event::LoginSuccessful(event) => {

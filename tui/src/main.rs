@@ -23,9 +23,6 @@ async fn main() -> anyhow::Result<()> {
         match reason {
             Interrupted::UserInt => println!("exited per user request"),
             Interrupted::OsSigInt => println!("exited because of an os sig int"),
-            Interrupted::ServerDisconnected => {
-                println!("exited because remote server has disconnected")
-            }
         }
     } else {
         println!("exited because of an unexpected error");

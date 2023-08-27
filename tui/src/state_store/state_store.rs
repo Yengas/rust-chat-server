@@ -54,7 +54,7 @@ impl StateStore {
         mut interrupt_rx: broadcast::Receiver<Interrupted>,
     ) -> anyhow::Result<Interrupted> {
         let mut opt_server_handle: Option<ServerHandle> = None;
-        let mut state = State::new();
+        let mut state = State::default();
 
         // the initial state once
         self.state_tx.send(state.clone())?;
@@ -69,10 +69,10 @@ impl StateStore {
                         Some(Ok(event)) => {
                             state.handle_server_event(&event);
                         },
+                        // server disconnected, we need to reset the state
                         None => {
-                            let _ = terminator.terminate(Interrupted::ServerDisconnected);
-
-                            break Interrupted::ServerDisconnected;
+                            opt_server_handle = None;
+                            state = State::default();
                         },
                         _ => (),
                     },
@@ -132,8 +132,11 @@ impl StateStore {
 
                             match create_server_handle(&addr).await {
                                 Ok(server_handle) => {
-                                    state.server_connection_status = ServerConnectionStatus::Connected { addr };
+                                    // set the server handle and change status for further processing
                                     let _ = opt_server_handle.insert(server_handle);
+                                    state.server_connection_status = ServerConnectionStatus::Connected { addr };
+                                    // ticker needs to be resetted to avoid showing time spent inputting and connecting to the server address
+                                    ticker.reset();
                                 },
                                 Err(err) => {
                                     state.server_connection_status = ServerConnectionStatus::Errored { err: err.to_string() };
