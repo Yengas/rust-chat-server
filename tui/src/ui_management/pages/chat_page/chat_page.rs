@@ -6,14 +6,17 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use crate::state_store::{action::Action, MessageBoxItem, RoomData, State};
 
-use super::components::{
-    message_input_box::{self, MessageInputBox},
-    room_list::{self, RoomList},
+use super::{
+    components::{
+        message_input_box::{self, MessageInputBox},
+        room_list::{self, RoomList},
+    },
+    section::{
+        usage::{widget_usage_to_text, HasUsageInfo, UsageInfo, UsageInfoLine},
+        SectionActivation,
+    },
 };
-use crate::ui_management::framework::{
-    component::{Component, ComponentRender},
-    usage::{widget_usage_to_text, HasUsageInfo, UsageInfo, UsageInfoLine},
-};
+use crate::ui_management::framework::component::{Component, ComponentRender};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Section {
@@ -91,14 +94,24 @@ impl ChatPage {
         self.props.room_data_map.get(name)
     }
 
-    fn get_handler_for_section<'a>(&'a self, section: &Section) -> &'a dyn Component {
+    fn get_component_for_section<'a>(&'a self, section: &Section) -> &'a dyn Component {
         match section {
             Section::MessageInput => &self.input_box,
             Section::RoomList => &self.room_list,
         }
     }
 
-    fn get_handler_for_section_mut<'a>(&'a mut self, section: &Section) -> &'a mut dyn Component {
+    fn get_component_for_section_mut<'a>(&'a mut self, section: &Section) -> &'a mut dyn Component {
+        match section {
+            Section::MessageInput => &mut self.input_box,
+            Section::RoomList => &mut self.room_list,
+        }
+    }
+
+    fn get_section_activation_for_section<'a>(
+        &'a mut self,
+        section: &Section,
+    ) -> &'a mut dyn SectionActivation {
         match section {
             Section::MessageInput => &mut self.input_box,
             Section::RoomList => &mut self.room_list,
@@ -166,9 +179,6 @@ impl Component for ChatPage {
         "Chat Page"
     }
 
-    fn activate(&mut self) {}
-    fn deactivate(&mut self) {}
-
     fn handle_key_event(&mut self, key: KeyEvent) {
         let active_section = self.active_section.clone();
 
@@ -178,7 +188,7 @@ impl Component for ChatPage {
                     let last_hovered_section = self.last_hovered_section.clone();
 
                     self.active_section = Some(last_hovered_section.clone());
-                    self.get_handler_for_section_mut(&last_hovered_section)
+                    self.get_section_activation_for_section(&last_hovered_section)
                         .activate();
                 }
                 KeyCode::Left => self.hover_previous(),
@@ -192,12 +202,12 @@ impl Component for ChatPage {
                 _ => {}
             },
             Some(section) => {
-                let handler = self.get_handler_for_section_mut(&section);
-
-                handler.handle_key_event(key);
+                self.get_component_for_section_mut(&section)
+                    .handle_key_event(key);
 
                 if key.code == KeyCode::Enter || key.code == KeyCode::Esc {
-                    handler.deactivate();
+                    self.get_section_activation_for_section(&section)
+                        .deactivate();
 
                     self.active_section = None;
                 }
@@ -406,7 +416,7 @@ impl HasUsageInfo for ChatPage {
                         keys: vec!["e".into()],
                         description: format!(
                             "to activate {}",
-                            self.get_handler_for_section(&self.last_hovered_section)
+                            self.get_component_for_section(&self.last_hovered_section)
                                 .name()
                         ),
                     },

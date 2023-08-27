@@ -7,14 +7,11 @@ use ratatui::{
 };
 use tokio::sync::mpsc::UnboundedSender;
 
+use super::super::section::usage::{HasUsageInfo, UsageInfo, UsageInfoLine};
+use crate::ui_management::framework::component::{Component, ComponentRender};
 use crate::{
     state_store::{action::Action, State},
-    ui_management::framework::usage::{UsageInfo, UsageInfoLine},
-};
-
-use crate::ui_management::framework::{
-    component::{Component, ComponentRender},
-    usage::HasUsageInfo,
+    ui_management::pages::chat_page::section::SectionActivation,
 };
 
 struct Props {
@@ -113,13 +110,6 @@ impl Component for MessageInputBox {
         }
     }
 
-    fn activate(&mut self) {}
-
-    fn deactivate(&mut self) {
-        self.cursor_position = 0;
-        self.text.clear();
-    }
-
     fn name(&self) -> &str {
         "Message Input"
     }
@@ -149,6 +139,15 @@ impl Component for MessageInputBox {
                 _ => {}
             }
         }
+    }
+}
+
+impl SectionActivation for MessageInputBox {
+    fn activate(&mut self) {}
+
+    fn deactivate(&mut self) {
+        self.cursor_position = 0;
+        self.text.clear();
     }
 }
 

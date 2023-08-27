@@ -85,14 +85,6 @@ impl Component for AppRouter {
         self.get_active_page_component().name()
     }
 
-    fn activate(&mut self) {
-        self.get_active_page_component_mut().activate()
-    }
-
-    fn deactivate(&mut self) {
-        self.get_active_page_component_mut().deactivate()
-    }
-
     fn handle_key_event(&mut self, key: KeyEvent) {
         self.get_active_page_component_mut().handle_key_event(key)
     }

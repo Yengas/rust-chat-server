@@ -36,9 +36,6 @@ impl Component for ConnectPage {
         "Connect Page"
     }
 
-    fn activate(&mut self) {}
-    fn deactivate(&mut self) {}
-
     fn handle_key_event(&mut self, key: KeyEvent) {
         match key.code {
             KeyCode::Enter => {

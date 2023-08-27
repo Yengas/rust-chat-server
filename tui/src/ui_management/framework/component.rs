@@ -14,8 +14,6 @@ pub trait Component {
 
     fn name(&self) -> &str;
 
-    fn activate(&mut self);
-    fn deactivate(&mut self);
     fn handle_key_event(&mut self, key: KeyEvent);
 }
 

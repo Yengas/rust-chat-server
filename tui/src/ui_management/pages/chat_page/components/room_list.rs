@@ -8,12 +8,13 @@ use ratatui::{
 };
 use tokio::sync::mpsc::UnboundedSender;
 
-use crate::state_store::{action::Action, State};
-
-use crate::ui_management::framework::{
-    component::{Component, ComponentRender},
-    usage::{HasUsageInfo, UsageInfo, UsageInfoLine},
+use super::super::section::usage::{HasUsageInfo, UsageInfo, UsageInfoLine};
+use crate::{
+    state_store::{action::Action, State},
+    ui_management::pages::chat_page::section::SectionActivation,
 };
+
+use crate::ui_management::framework::component::{Component, ComponentRender};
 
 pub struct RoomState {
     pub name: String,
@@ -127,23 +128,6 @@ impl Component for RoomList {
         }
     }
 
-    fn activate(&mut self) {
-        let idx: usize = self
-            .props
-            .active_room
-            .as_ref()
-            .and_then(|room_name| self.get_room_idx(room_name.as_str()))
-            .unwrap_or(0);
-
-        *self.list_state.offset_mut() = 0;
-        self.list_state.select(Some(idx));
-    }
-
-    fn deactivate(&mut self) {
-        *self.list_state.offset_mut() = 0;
-        self.list_state.select(None);
-    }
-
     fn name(&self) -> &str {
         "Room List"
     }
@@ -169,6 +153,25 @@ impl Component for RoomList {
             }
             _ => (),
         }
+    }
+}
+
+impl SectionActivation for RoomList {
+    fn activate(&mut self) {
+        let idx: usize = self
+            .props
+            .active_room
+            .as_ref()
+            .and_then(|room_name| self.get_room_idx(room_name.as_str()))
+            .unwrap_or(0);
+
+        *self.list_state.offset_mut() = 0;
+        self.list_state.select(Some(idx));
+    }
+
+    fn deactivate(&mut self) {
+        *self.list_state.offset_mut() = 0;
+        self.list_state.select(None);
     }
 }
 
