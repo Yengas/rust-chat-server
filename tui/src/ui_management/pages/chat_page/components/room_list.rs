@@ -14,7 +14,7 @@ use crate::{
     ui_management::pages::chat_page::section::SectionActivation,
 };
 
-use crate::ui_management::framework::component::{Component, ComponentRender};
+use crate::ui_management::components::{Component, ComponentRender};
 
 pub struct RoomState {
     pub name: String,

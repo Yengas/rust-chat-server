@@ -1,5 +1,5 @@
 pub use ui_manager::UiManager;
 
-mod framework;
+mod components;
 mod pages;
 mod ui_manager;

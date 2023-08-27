@@ -4,7 +4,7 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use crate::state_store::{action::Action, State};
 
-use crate::ui_management::framework::component::{Component, ComponentRender};
+use crate::ui_management::components::{Component, ComponentRender};
 
 /// ConnectPage handles the connection to the server
 pub struct ConnectPage {

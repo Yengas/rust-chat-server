@@ -16,7 +16,7 @@ use super::{
         SectionActivation,
     },
 };
-use crate::ui_management::framework::component::{Component, ComponentRender};
+use crate::ui_management::components::{Component, ComponentRender};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Section {

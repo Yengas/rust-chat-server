@@ -6,7 +6,7 @@ use crate::state_store::{action::Action, ServerConnectionStatus, State};
 
 use self::{chat_page::ChatPage, connect_page::ConnectPage};
 
-use super::framework::component::{Component, ComponentRender};
+use super::components::{Component, ComponentRender};
 
 mod chat_page;
 mod connect_page;
