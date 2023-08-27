@@ -6,7 +6,7 @@ use crate::state_store::{action::Action, ServerConnectionStatus, State};
 
 use self::{chat_page::ChatPage, connect_page::ConnectPage};
 
-use super::framework::component::{Component, ComponentKeyHandled, ComponentRender};
+use super::framework::component::{Component, ComponentRender};
 
 mod chat_page;
 mod connect_page;
@@ -93,7 +93,7 @@ impl Component for AppRouter {
         self.get_active_page_component_mut().deactivate()
     }
 
-    fn handle_key_event(&mut self, key: KeyEvent) -> ComponentKeyHandled {
+    fn handle_key_event(&mut self, key: KeyEvent) {
         self.get_active_page_component_mut().handle_key_event(key)
     }
 }

@@ -16,17 +16,9 @@ pub trait Component {
 
     fn activate(&mut self);
     fn deactivate(&mut self);
-    fn handle_key_event(&mut self, key: KeyEvent) -> ComponentKeyHandled;
+    fn handle_key_event(&mut self, key: KeyEvent);
 }
 
 pub trait ComponentRender<Props> {
     fn render<B: Backend>(&self, frame: &mut Frame<B>, props: Props);
-}
-
-#[derive(Debug, Clone)]
-pub enum ComponentKeyHandled {
-    /// No further action needed
-    Ok,
-    /// Component needs to lose focus
-    LoseFocus,
 }

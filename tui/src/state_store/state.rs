@@ -54,6 +54,7 @@ pub struct State {
     /// Timer since app was opened
     pub timer: usize,
 }
+
 impl Default for State {
     fn default() -> Self {
         State {

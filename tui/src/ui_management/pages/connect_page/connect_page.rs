@@ -4,7 +4,7 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use crate::state_store::{action::Action, State};
 
-use crate::ui_management::framework::component::{Component, ComponentKeyHandled, ComponentRender};
+use crate::ui_management::framework::component::{Component, ComponentRender};
 
 /// ConnectPage handles the connection to the server
 pub struct ConnectPage {
@@ -39,7 +39,7 @@ impl Component for ConnectPage {
     fn activate(&mut self) {}
     fn deactivate(&mut self) {}
 
-    fn handle_key_event(&mut self, key: KeyEvent) -> ComponentKeyHandled {
+    fn handle_key_event(&mut self, key: KeyEvent) {
         match key.code {
             KeyCode::Enter => {
                 let _ = self.action_tx.send(Action::ConnectToServerRequest {
@@ -53,9 +53,7 @@ impl Component for ConnectPage {
                 let _ = self.action_tx.send(Action::Exit);
             }
             _ => {}
-        };
-
-        ComponentKeyHandled::Ok
+        }
     }
 }
 

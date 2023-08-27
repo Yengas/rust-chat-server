@@ -13,7 +13,7 @@ use crate::{
 };
 
 use crate::ui_management::framework::{
-    component::{Component, ComponentKeyHandled, ComponentRender},
+    component::{Component, ComponentRender},
     usage::HasUsageInfo,
 };
 
@@ -47,9 +47,6 @@ impl MessageInputBox {
         let _ = self.action_tx.send(Action::SendMessage {
             content: self.text.clone(),
         });
-
-        self.text.clear();
-        self.reset_cursor();
     }
 
     fn move_cursor_left(&mut self) {
@@ -93,10 +90,6 @@ impl MessageInputBox {
     fn clamp_cursor(&self, new_cursor_pos: usize) -> usize {
         new_cursor_pos.clamp(0, self.text.len())
     }
-
-    fn reset_cursor(&mut self) {
-        self.cursor_position = 0;
-    }
 }
 
 impl Component for MessageInputBox {
@@ -131,9 +124,9 @@ impl Component for MessageInputBox {
         "Message Input"
     }
 
-    fn handle_key_event(&mut self, key: KeyEvent) -> ComponentKeyHandled {
+    fn handle_key_event(&mut self, key: KeyEvent) {
         if key.kind != KeyEventKind::Press {
-            return ComponentKeyHandled::Ok;
+            return;
         }
 
         if self.props.active_room.is_some() {
@@ -156,8 +149,6 @@ impl Component for MessageInputBox {
                 _ => {}
             }
         }
-
-        ComponentKeyHandled::Ok
     }
 }
 

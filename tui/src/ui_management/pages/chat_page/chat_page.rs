@@ -11,7 +11,7 @@ use super::components::{
     room_list::{self, RoomList},
 };
 use crate::ui_management::framework::{
-    component::{Component, ComponentKeyHandled, ComponentRender},
+    component::{Component, ComponentRender},
     usage::{widget_usage_to_text, HasUsageInfo, UsageInfo, UsageInfoLine},
 };
 
@@ -169,7 +169,7 @@ impl Component for ChatPage {
     fn activate(&mut self) {}
     fn deactivate(&mut self) {}
 
-    fn handle_key_event(&mut self, key: KeyEvent) -> ComponentKeyHandled {
+    fn handle_key_event(&mut self, key: KeyEvent) {
         let active_section = self.active_section.clone();
 
         match active_section {
@@ -191,22 +191,18 @@ impl Component for ChatPage {
                 }
                 _ => {}
             },
-            Some(section) if key.code == KeyCode::Esc => {
-                self.get_handler_for_section_mut(&section).deactivate();
-                self.active_section = None;
-            }
             Some(section) => {
                 let handler = self.get_handler_for_section_mut(&section);
 
-                if let ComponentKeyHandled::LoseFocus = handler.handle_key_event(key) {
+                handler.handle_key_event(key);
+
+                if key.code == KeyCode::Enter || key.code == KeyCode::Esc {
                     handler.deactivate();
 
                     self.active_section = None;
                 }
             }
         }
-
-        ComponentKeyHandled::Ok
     }
 }
 

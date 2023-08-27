@@ -11,7 +11,7 @@ use tokio::sync::mpsc::UnboundedSender;
 use crate::state_store::{action::Action, State};
 
 use crate::ui_management::framework::{
-    component::{Component, ComponentKeyHandled, ComponentRender},
+    component::{Component, ComponentRender},
     usage::{HasUsageInfo, UsageInfo, UsageInfoLine},
 };
 
@@ -148,7 +148,7 @@ impl Component for RoomList {
         "Room List"
     }
 
-    fn handle_key_event(&mut self, key: KeyEvent) -> ComponentKeyHandled {
+    fn handle_key_event(&mut self, key: KeyEvent) {
         match key.code {
             KeyCode::Up => {
                 self.previous();
@@ -166,13 +166,9 @@ impl Component for RoomList {
                 let _ = self.action_tx.send(Action::SelectRoom {
                     room: room_state.name.clone(),
                 });
-
-                return ComponentKeyHandled::LoseFocus;
             }
             _ => (),
         }
-
-        ComponentKeyHandled::Ok
     }
 }
 
