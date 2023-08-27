@@ -18,12 +18,11 @@ use tokio_stream::StreamExt;
 
 use crate::{
     state_store::{action::Action, State},
-    ui_management::{
-        framework::component::{Component, ComponentRender},
-        pages::chat_page::ChatPage,
-    },
+    ui_management::framework::component::{Component, ComponentRender},
     Interrupted,
 };
+
+use super::pages::AppRouter;
 
 const RENDERING_TICK_RATE: Duration = Duration::from_millis(250);
 
@@ -44,10 +43,10 @@ impl UiManager {
         mut interrupt_rx: broadcast::Receiver<Interrupted>,
     ) -> anyhow::Result<Interrupted> {
         // consume the first state to initialize the ui app
-        let mut chat_page = {
+        let mut app_router = {
             let state = state_rx.recv().await.unwrap();
 
-            ChatPage::new(&state, self.action_tx.clone())
+            AppRouter::new(&state, self.action_tx.clone())
         };
 
         let mut terminal = setup_terminal()?;
@@ -61,14 +60,14 @@ impl UiManager {
                 // Catch and handle crossterm events
                maybe_event = crossterm_events.next() => match maybe_event {
                     Some(Ok(Event::Key(key)))  => {
-                        chat_page.handle_key_event(key);
+                        app_router.handle_key_event(key);
                     },
                     None => break Ok(Interrupted::UserInt),
                     _ => (),
                 },
                 // Handle state updates
                 Some(state) = state_rx.recv() => {
-                    chat_page = chat_page.move_with_state(&state);
+                    app_router = app_router.move_with_state(&state);
                 },
                 // Catch and handle interrupt signal to gracefully shutdown
                 Ok(interrupted) = interrupt_rx.recv() => {
@@ -77,7 +76,7 @@ impl UiManager {
             }
 
             if let Err(err) = terminal
-                .draw(|frame| chat_page.render(frame, ()))
+                .draw(|frame| app_router.render(frame, ()))
                 .context("could not render to the terminal")
             {
                 break Err(err);

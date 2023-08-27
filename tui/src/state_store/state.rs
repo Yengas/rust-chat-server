@@ -33,9 +33,18 @@ impl RoomData {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum ServerConnectionStatus {
+    Uninitalized,
+    Connecting,
+    Connected { addr: String },
+    Errored { err: String },
+}
+
 /// State holds the state of the application
 #[derive(Debug, Clone)]
 pub struct State {
+    pub server_connection_status: ServerConnectionStatus,
     /// Currently active room
     pub active_room: Option<String>,
     /// The name of the user
@@ -49,6 +58,7 @@ pub struct State {
 impl State {
     pub(super) fn new() -> Self {
         State {
+            server_connection_status: ServerConnectionStatus::Uninitalized,
             active_room: None,
             username: String::new(),
             room_data_map: HashMap::new(),

@@ -221,29 +221,25 @@ fn calculate_message_list_offset(height: u16, messages_len: usize) -> usize {
 impl ComponentRender<()> for ChatPage {
     fn render<B: Backend>(&self, frame: &mut Frame<B>, _props: ()) {
         let [left, middle, right] = *Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints(
-            [
-                Constraint::Percentage(20),
-                Constraint::Percentage(60),
-                Constraint::Percentage(20),
-            ]
-            .as_ref(),
-        )
-        .split(frame.size()) else {
+            .direction(Direction::Horizontal)
+            .constraints(
+                [
+                    Constraint::Percentage(20),
+                    Constraint::Percentage(60),
+                    Constraint::Percentage(20),
+                ]
+                .as_ref(),
+            )
+            .split(frame.size())
+        else {
             panic!("The main layout should have 3 chunks")
         };
 
         let [container_room_list, container_user_info] = *Layout::default()
-        .direction(Direction::Vertical)
-        .constraints(
-            [
-                Constraint::Min(1),
-                Constraint::Length(4),
-            ]
-            .as_ref(),
-        )
-        .split(left) else {
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Min(1), Constraint::Length(4)].as_ref())
+            .split(left)
+        else {
             panic!("The left layout should have 2 chunks")
         };
 
@@ -267,16 +263,17 @@ impl ComponentRender<()> for ChatPage {
         frame.render_widget(user_info, container_user_info);
 
         let [container_highlight, container_messages, container_input] = *Layout::default()
-        .direction(Direction::Vertical)
-        .constraints(
-            [
-                Constraint::Length(3),
-                Constraint::Min(1),
-                Constraint::Length(3),
-            ]
-            .as_ref(),
-        )
-        .split(middle) else {
+            .direction(Direction::Vertical)
+            .constraints(
+                [
+                    Constraint::Length(3),
+                    Constraint::Min(1),
+                    Constraint::Length(3),
+                ]
+                .as_ref(),
+            )
+            .split(middle)
+        else {
             panic!("The middle layout should have 3 chunks")
         };
 
@@ -350,15 +347,10 @@ impl ComponentRender<()> for ChatPage {
         );
 
         let [container_room_users, container_usage] = *Layout::default()
-        .direction(Direction::Vertical)
-        .constraints(
-            [
-                Constraint::Min(1),
-                Constraint::Length(10),
-            ]
-            .as_ref(),
-        )
-        .split(right) else {
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Min(1), Constraint::Length(10)].as_ref())
+            .split(right)
+        else {
             panic!("The left layout should have 2 chunks")
         };
 
