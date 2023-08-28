@@ -32,18 +32,22 @@ struct Props {
 
 impl From<&State> for Props {
     fn from(state: &State) -> Self {
+        let mut rooms = state
+            .room_data_map
+            .iter()
+            .map(|(name, room_data)| RoomState {
+                name: name.clone(),
+                description: room_data.description.clone(),
+                has_joined: room_data.has_joined,
+                // TODO: fix has unread
+                has_unread: false,
+            })
+            .collect::<Vec<RoomState>>();
+
+        rooms.sort_by(|room_a, room_b| room_a.name.cmp(&room_b.name));
+
         Self {
-            rooms: state
-                .room_data_map
-                .iter()
-                .map(|(name, room_data)| RoomState {
-                    name: name.clone(),
-                    description: room_data.description.clone(),
-                    has_joined: room_data.has_joined,
-                    // TODO: fix has unread
-                    has_unread: false,
-                })
-                .collect(),
+            rooms,
             active_room: state.active_room.clone(),
         }
     }
