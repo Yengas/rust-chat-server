@@ -21,6 +21,8 @@ pub struct RoomData {
     pub messages: Vec<MessageBoxItem>,
     /// Has joined the room
     pub has_joined: bool,
+    /// Has unread messages
+    pub has_unread: bool,
 }
 
 impl RoomData {
@@ -113,14 +115,18 @@ impl State {
                     event.users.clone().into_iter().collect();
             }
             event::Event::UserMessage(event) => {
-                self.room_data_map
-                    .get_mut(&event.room)
-                    .unwrap()
-                    .messages
-                    .push(MessageBoxItem::Message {
-                        username: event.username.clone(),
-                        content: event.content.clone(),
-                    });
+                let room_data = self.room_data_map.get_mut(&event.room).unwrap();
+
+                room_data.messages.push(MessageBoxItem::Message {
+                    username: event.username.clone(),
+                    content: event.content.clone(),
+                });
+
+                if let Some(active_room) = self.active_room.as_ref() {
+                    if !active_room.eq(&event.room) {
+                        room_data.has_unread = true;
+                    }
+                }
             }
         }
     }

@@ -39,8 +39,7 @@ impl From<&State> for Props {
                 name: name.clone(),
                 description: room_data.description.clone(),
                 has_joined: room_data.has_joined,
-                // TODO: fix has unread
-                has_unread: false,
+                has_unread: room_data.has_unread,
             })
             .collect::<Vec<RoomState>>();
 

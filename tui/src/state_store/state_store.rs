@@ -104,6 +104,8 @@ impl StateStore {
                                         .await
                                         .context("could not join room")?;
                                 }
+
+                                room_data.has_unread = false;
                             }
                         },
                         Action::Exit => {
