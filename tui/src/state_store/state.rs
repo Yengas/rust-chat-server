@@ -109,7 +109,8 @@ impl State {
                 }
             }
             event::Event::UserJoinedRoom(event) => {
-                self.room_data_map.get_mut(&event.room).unwrap().users = event.users.clone();
+                self.room_data_map.get_mut(&event.room).unwrap().users =
+                    event.users.clone().into_iter().collect();
             }
             event::Event::UserMessage(event) => {
                 self.room_data_map

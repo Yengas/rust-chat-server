@@ -13,6 +13,7 @@ use tokio::{
 use crate::room::{ChatRoom, MessageSender};
 
 pub(super) struct ChatRoomManager {
+    session_id: String,
     username: String,
     all_rooms: HashMap<String, Arc<Mutex<ChatRoom>>>,
     joined_rooms: HashMap<String, (MessageSender, AbortHandle)>,
@@ -22,10 +23,15 @@ pub(super) struct ChatRoomManager {
 }
 
 impl ChatRoomManager {
-    pub fn new(username: &str, chat_rooms: HashMap<String, Arc<Mutex<ChatRoom>>>) -> Self {
+    pub fn new(
+        session_id: &str,
+        username: &str,
+        chat_rooms: HashMap<String, Arc<Mutex<ChatRoom>>>,
+    ) -> Self {
         let (mpsc_tx, mpsc_rx) = mpsc::channel(100);
 
         ChatRoomManager {
+            session_id: String::from(session_id),
             username: String::from(username),
             all_rooms: chat_rooms,
             joined_rooms: HashMap::new(),
@@ -50,7 +56,7 @@ impl ChatRoomManager {
 
                 let (urp, participants) = {
                     let mut room = room.lock().await;
-                    let urp = room.add_participant(self.username.clone());
+                    let urp = room.add_participant(self.session_id.clone(), self.username.clone());
 
                     (urp, room.participants().clone())
                 };
@@ -66,7 +72,7 @@ impl ChatRoomManager {
                     mpsc_tx
                         .send(Event::UserJoinedRoom(event::UserJoinedRoomReplyEvent {
                             room: cmd.room.clone(),
-                            users: participants.clone(),
+                            users: participants.into_iter().collect(),
                         }))
                         .await?;
 
@@ -127,11 +133,10 @@ impl ChatRoomManager {
                 .lock()
                 .await;
 
-            room.remove_participant(&self.username);
+            room.remove_participant(message_sender);
         }
 
         abort_handle.abort();
-        drop(message_sender);
 
         Ok(())
     }

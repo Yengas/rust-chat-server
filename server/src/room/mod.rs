@@ -1,42 +1,11 @@
-use std::collections::HashSet;
-
-use anyhow::Context;
 use comms::event;
 use tokio::sync::broadcast;
 
-#[derive(Debug)]
-/// MessageSender is a struct that allows sending messages associated to a specific room
-/// and a username. When a user joins a room, a MessageSender is created for that user.
-pub struct MessageSender {
-    broacast_tx: broadcast::Sender<event::Event>,
-    room: String,
-    username: String,
-}
+pub use self::message_sender::MessageSender;
+use self::room_participation_list::RoomParticipationList;
 
-impl MessageSender {
-    fn new(broadcast_tx: broadcast::Sender<event::Event>, room: String, username: String) -> Self {
-        MessageSender {
-            broacast_tx: broadcast_tx,
-            room,
-            username,
-        }
-    }
-
-    /// Send a message to the room
-    pub fn send(&self, content: String) -> anyhow::Result<()> {
-        self.broacast_tx
-            .send(comms::event::Event::UserMessage(
-                event::UserMessageBroadcastEvent {
-                    room: self.room.clone(),
-                    username: self.username.clone(),
-                    content,
-                },
-            ))
-            .context("could not write to the broadcast channel")?;
-
-        Ok(())
-    }
-}
+mod message_sender;
+mod room_participation_list;
 
 #[derive(Debug)]
 /// UserRoomParticipation is a struct that holds a MessageSender and a broadcast receiver.
@@ -76,8 +45,8 @@ impl ChatRoomMetadata {
 /// A UserRoomParticipation is handed out to a user when they join a room
 pub struct ChatRoom {
     name: String,
-    participants: HashSet<String>,
     broadcast_tx: broadcast::Sender<event::Event>,
+    room_participation_list: RoomParticipationList,
 }
 
 impl ChatRoom {
@@ -87,44 +56,59 @@ impl ChatRoom {
         ChatRoom {
             name: String::from(&metadata.name),
             broadcast_tx,
-            participants: HashSet::new(),
+            room_participation_list: RoomParticipationList::new(),
         }
     }
 
-    pub fn participants(&self) -> &HashSet<String> {
-        &self.participants
+    pub fn participants(&self) -> Vec<String> {
+        self.room_participation_list.get_unique_usernames()
     }
 
     /// Add a participant to the room and broadcast that they joined
     /// A UserRoomParticipation is returned for the user to be able to interact with the room
-    pub fn add_participant(&mut self, username: String) -> UserRoomParticipation {
-        self.participants.insert(username.clone());
-
+    pub fn add_participant(
+        &mut self,
+        session_id: String,
+        username: String,
+    ) -> UserRoomParticipation {
         let broadcast_tx = self.broadcast_tx.clone();
         let broadcast_rx = broadcast_tx.subscribe();
-        let message_sender = MessageSender::new(broadcast_tx, self.name.clone(), username.clone());
+        let message_sender = MessageSender::new(
+            broadcast_tx,
+            self.name.clone(),
+            session_id,
+            username.clone(),
+        );
 
-        let _ = self.broadcast_tx.send(event::Event::RoomParticipation(
-            event::RoomParticipationBroacastEvent {
-                username,
-                room: self.name.clone(),
-                status: event::RoomParticipationStatus::Joined,
-            },
-        ));
+        // If the user is new e.g. they do not have another session with same username,
+        // broadcast that they joined to all users
+        if self.room_participation_list.insert_user(&message_sender) {
+            let _ = self.broadcast_tx.send(event::Event::RoomParticipation(
+                event::RoomParticipationBroacastEvent {
+                    username,
+                    room: self.name.clone(),
+                    status: event::RoomParticipationStatus::Joined,
+                },
+            ));
+        }
 
         UserRoomParticipation::new(message_sender, broadcast_rx)
     }
 
     /// Remove a participant from the room and broadcast that they left
-    pub fn remove_participant(&mut self, username: &String) {
-        self.participants.retain(|p| p != username);
-
-        let _ = self.broadcast_tx.send(event::Event::RoomParticipation(
-            event::RoomParticipationBroacastEvent {
-                username: username.clone(),
-                room: self.name.clone(),
-                status: event::RoomParticipationStatus::Left,
-            },
-        ));
+    /// Consume the MessageSender to drop it
+    pub fn remove_participant(&mut self, message_sender: MessageSender) {
+        if self
+            .room_participation_list
+            .remove_user_by_session(&message_sender)
+        {
+            let _ = self.broadcast_tx.send(event::Event::RoomParticipation(
+                event::RoomParticipationBroacastEvent {
+                    username: String::from(message_sender.username()),
+                    room: self.name.clone(),
+                    status: event::RoomParticipationStatus::Left,
+                },
+            ));
+        }
     }
 }

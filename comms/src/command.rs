@@ -1,13 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-/// User Command for logging in.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct LoginCommand {
-    /// The username to use for the chat session.
-    #[serde(rename = "u")]
-    pub username: String,
-}
-
 /// User Command for joining a room.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct JoinRoomCommand {
@@ -44,7 +36,6 @@ pub struct QuitCommand;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "_ct", rename_all = "snake_case")]
 pub enum UserCommand {
-    Login(LoginCommand),
     JoinRoom(JoinRoomCommand),
     LeaveRoom(LeaveRoomCommand),
     SendMessage(SendMessageCommand),
@@ -61,15 +52,6 @@ mod tests {
         assert_eq!(serialized, expected);
         let deserialized: UserCommand = serde_json::from_str(&serialized).unwrap();
         assert_eq!(deserialized, *command);
-    }
-
-    #[test]
-    fn test_login_command() {
-        let command = UserCommand::Login(LoginCommand {
-            username: "test".to_string(),
-        });
-
-        assert_command_serialization(&command, r#"{"_ct":"login","u":"test"}"#);
     }
 
     #[test]

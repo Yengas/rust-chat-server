@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use serde::{Deserialize, Serialize};
 
 /// The detail of a given room
@@ -16,10 +14,13 @@ pub struct RoomDetail {
 /// A user has successfully logged in
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LoginSuccessfulReplyEvent {
+    /// The session id for the connection
+    #[serde(rename = "s")]
+    pub session_id: String,
     /// The username of the user that has logged in
     #[serde(rename = "u")]
     pub username: String,
-    /// The list of rooms the user can participate
+    /// The list of rooms the user can participate, unique and ordered
     #[serde(rename = "rs")]
     pub rooms: Vec<RoomDetail>,
 }
@@ -52,9 +53,9 @@ pub struct UserJoinedRoomReplyEvent {
     /// The slug of the room the user has joined
     #[serde(rename = "r")]
     pub room: String,
-    /// The users currently in the room
+    /// The users currently in the room, unique and ordered
     #[serde(rename = "us")]
-    pub users: HashSet<String>,
+    pub users: Vec<String>,
 }
 
 /// A user has sent a message to a room
@@ -97,16 +98,17 @@ mod tests {
     #[test]
     fn test_login_successful_event() {
         let event = Event::LoginSuccessful(LoginSuccessfulReplyEvent {
-            username: "test".to_string(),
+            session_id: "session-id-1".to_string(),
+            username: "username-1".to_string(),
             rooms: vec![RoomDetail {
-                name: "room1".to_string(),
+                name: "room-1".to_string(),
                 description: "some description".to_string(),
             }],
         });
 
         assert_event_serialization(
             &event,
-            r#"{"_et":"login_successful","u":"test","rs":[{"n":"room1","d":"some description"}]}"#,
+            r#"{"_et":"login_successful","s":"session-id-1","u":"username-1","rs":[{"n":"room-1","d":"some description"}]}"#,
         );
     }
 
@@ -142,7 +144,7 @@ mod tests {
     fn test_user_joined_room_event() {
         let event = Event::UserJoinedRoom(UserJoinedRoomReplyEvent {
             room: "test".to_string(),
-            users: vec!["test".to_string()].into_iter().collect(),
+            users: vec!["test".to_string()],
         });
 
         assert_event_serialization(
