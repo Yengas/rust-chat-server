@@ -1,6 +1,6 @@
 # Rust Chat Server
 
-This project serves as a learning exercise in [Rust](https://www.rust-lang.org/), [Tokio](https://tokio.rs/), Channels, and TUI (Terminal User Interface) programming. It features a room-based chat server with a Terminal User Interface (TUI), utilizing technologies such as Tokio, Ratatui, and a Redux-inspired architecture.
+This project serves as a learning exercise in [Rust](https://www.rust-lang.org/), [Tokio](https://tokio.rs/), [Channels](https://tokio.rs/tokio/tutorial/channels), and TUI (Terminal User Interface) programming. It features a room-based chat server with a Terminal User Interface (TUI), utilizing technologies such as Tokio, Ratatui, and a Redux-inspired architecture.
 
 ![TUI Demo](./docs/tui.gif)
 
