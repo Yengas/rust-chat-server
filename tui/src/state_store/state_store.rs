@@ -1,9 +1,15 @@
 use std::time::Duration;
 
 use anyhow::Context;
-use comms::{command, event::Event};
+use comms::{
+    command,
+    transport::{
+        self,
+        client::{CommandWriter, EventStream},
+    },
+};
 use tokio::{
-    net::{tcp::OwnedWriteHalf, TcpStream},
+    net::TcpStream,
     sync::{
         broadcast,
         mpsc::{self, UnboundedReceiver, UnboundedSender},
@@ -13,11 +19,7 @@ use tokio_stream::StreamExt;
 
 use crate::{state_store::ServerConnectionStatus, Interrupted, Terminator};
 
-use super::{
-    action::Action,
-    client::{self, BoxedStream, CommandWriter},
-    State,
-};
+use super::{action::Action, State};
 
 pub struct StateStore {
     state_tx: UnboundedSender<State>,
@@ -32,13 +34,13 @@ impl StateStore {
 }
 
 struct ServerHandle {
-    event_stream: BoxedStream<anyhow::Result<Event>>,
-    command_writer: CommandWriter<OwnedWriteHalf>,
+    event_stream: EventStream,
+    command_writer: CommandWriter,
 }
 
 async fn create_server_handle(addr: &str) -> anyhow::Result<ServerHandle> {
     let stream = TcpStream::connect(addr).await?;
-    let (event_stream, command_writer) = client::split_stream(stream);
+    let (event_stream, command_writer) = transport::client::split_tcp_stream(stream);
 
     Ok(ServerHandle {
         event_stream,

@@ -3,6 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use comms::{
     command::UserCommand,
     event::{self, RoomDetail},
+    transport,
 };
 use nanoid::nanoid;
 use tokio::{
@@ -15,7 +16,6 @@ use crate::room::{ChatRoom, ChatRoomMetadata};
 
 use self::room_manager::ChatRoomManager;
 
-mod raw_stream;
 mod room_manager;
 
 /// Given a tcp stream and a global chat room list, handles the user session
@@ -29,7 +29,7 @@ pub async fn handle_user_session(
     // Generate a random username for the user, since we don't have a login system
     let username = String::from(&nanoid!()[0..5]);
     // Split the tcp stream into a command stream and an event writer with better ergonomics
-    let (mut commands, mut event_writer) = raw_stream::split_stream(stream);
+    let (mut commands, mut event_writer) = transport::server::split_tcp_stream(stream);
 
     // Welcoming the user with a login successful event and necessary information about the server
     event_writer

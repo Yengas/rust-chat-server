@@ -7,9 +7,9 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.75"
-comms = { path = "../comms" }
+comms = { path = "../comms", features = ["server"] }
 nanoid = "0.4.0"
 serde = "1.0.188"
 serde_json = "1.0.105"
 tokio = { version = "1.32.0", features = ["full"] }
-tokio-stream = { version = "0.1.14", features = ["io-util"] }
+tokio-stream = { version = "0.1.14" }
