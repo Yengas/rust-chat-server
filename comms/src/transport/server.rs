@@ -9,8 +9,10 @@ use crate::{command, event};
 
 use super::common::{BoxedStream, NEW_LINE};
 
+/// [CommandStream] is a stream of [crate::command::UserCommand]s sent by the client
 pub type CommandStream = BoxedStream<anyhow::Result<command::UserCommand>>;
 
+/// [EventWriter] is a wrapper around a [TcpStream] which writes [crate::event::Event]s to the client
 pub struct EventWriter {
     writer: OwnedWriteHalf,
 }
@@ -20,6 +22,7 @@ impl EventWriter {
         Self { writer }
     }
 
+    /// Send a [crate::event::Event] to the backing [TcpStream]
     pub async fn write(&mut self, event: &event::Event) -> anyhow::Result<()> {
         let mut serialized_bytes = serde_json::to_vec(event)?;
         serialized_bytes.extend_from_slice(NEW_LINE);
@@ -31,8 +34,10 @@ impl EventWriter {
 }
 
 /// Splits a TCP stream into a stream of commands and an event writer.
-/// The user can only send commands to the server, hence stream of lines is deserialized into `UserCommand`s
-/// and the writer is used to send `Event`s to the user that maybe response to the command or a broadcasted event from another user.
+///
+/// # Arguments
+///
+/// - `stream` - A [TcpStream] to split
 pub fn split_tcp_stream(stream: TcpStream) -> (CommandStream, EventWriter) {
     let (reader, writer) = stream.into_split();
 
