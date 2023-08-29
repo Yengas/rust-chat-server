@@ -18,4 +18,6 @@ tokio = { version = "1.32.0", default-features = false, features = ["net"], opti
 tokio-stream = { version = "0.1.14", default-features = false, features = ["io-util"], optional = true }
 
 [dev-dependencies]
-serde_json = "1.0"
+serde_json = "1.0.105"
+tokio = { version = "1.32.0", features = ["full"] }
+tokio-stream = { version = "0.1.14" }
