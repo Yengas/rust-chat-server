@@ -10,7 +10,7 @@ anyhow = "1.0.75"
 comms = { path = "../comms", features = ["client"] }
 crossterm = { version = "0.27.0", features = ["event-stream"] }
 rand = "0.8.5"
-ratatui = { version = "0.22.0", features = ["all-widgets"] }
+ratatui = { version = "0.23.0", features = ["all-widgets"] }
 serde = "1.0.188"
 serde_json = "1.0.105"
 tokio = { version = "1.32.0", features = ["full"] }
