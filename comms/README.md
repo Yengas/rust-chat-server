@@ -9,17 +9,16 @@ The `comms` library, short for "communications," serves as an auxiliary module f
   - [`comms::transport::client`](./src/transport/client.rs) assists in splitting a [tokio::net::TcpStream](https://docs.rs/tokio/latest/tokio/net/struct.TcpStream.html) into an **EventStream** and a **CommandWriter**.
   - [`comms::transport::server`](./src/transport/server.rs) enables the partitioning of a [tokio::net::TcpStream](https://docs.rs/tokio/latest/tokio/net/struct.TcpStream.html) into a **CommandStream** and an **EventWriter**.
 
-## Quick Start Example
+## Example Usage
 
-Execute the example client and server with the following command:  
-`cargo run --example server_and_client --features="client,server"`
+Execute the e2e test for client and server with the following command: `cargo test --features="client,server"`
 
-[This code](./examples/server_and_client.rs) spawns a server and a client. The server accepts one client, sends it an event, and listens for commands until the connection is closed. Conversely, the client receives one event, sends two commands, and then terminates its connection.
+[This e2e test](./tests/e2e_server_and_client_transport.rs) spawns a server and a client. The server accepts one client, sends it an event, and listens for commands until the connection is closed. Conversely, the client receives one event, sends two commands, and then terminates its connection.
 
-Here's a simplified pseudocode version of the [example code](./examples/server_and_client.rs):
+Here's a simplified pseudocode version of the [e2e test code](./tests/e2e_server_and_client_transport.rs):
 
 ```rust
-// src/examples/server_and_client.rs
+// full e2e test code: src/tests/e2e_server_and_client_transport.rs
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
