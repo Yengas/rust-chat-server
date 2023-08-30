@@ -70,7 +70,7 @@ impl Default for State {
 }
 
 impl State {
-    pub(super) fn handle_server_event(&mut self, event: &event::Event) {
+    pub fn handle_server_event(&mut self, event: &event::Event) {
         match event {
             event::Event::LoginSuccessful(event) => {
                 self.username = event.username.clone();
@@ -129,5 +129,33 @@ impl State {
                 }
             }
         }
+    }
+
+    pub fn mark_connection_request_start(&mut self) {
+        self.server_connection_status = ServerConnectionStatus::Connecting;
+    }
+
+    /// Processes the result of a connection request to change the state of the application
+    pub fn process_connection_request_result(&mut self, result: anyhow::Result<String>) {
+        self.server_connection_status = match result {
+            Ok(addr) => ServerConnectionStatus::Connected { addr: addr.clone() },
+            Err(err) => ServerConnectionStatus::Errored {
+                err: err.to_string(),
+            },
+        }
+    }
+
+    /// Tries to set the active room as the given room. Returns the [RoomData] associated to the room.
+    pub fn try_set_active_room(&mut self, room: &str) -> Option<&RoomData> {
+        let room_data = self.room_data_map.get_mut(room)?;
+        room_data.has_unread = false;
+
+        self.active_room = Some(String::from(room));
+
+        Some(room_data)
+    }
+
+    pub fn tick_timer(&mut self) {
+        self.timer += 1;
     }
 }
