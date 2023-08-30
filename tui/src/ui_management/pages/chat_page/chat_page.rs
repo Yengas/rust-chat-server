@@ -86,7 +86,7 @@ pub struct ChatPage {
     /// The room list widget that handles the listing of the rooms
     pub room_list: RoomList,
     /// The input box widget that handles the message input
-    pub input_box: MessageInputBox,
+    pub message_input_box: MessageInputBox,
 }
 
 impl ChatPage {
@@ -96,14 +96,14 @@ impl ChatPage {
 
     fn get_component_for_section<'a>(&'a self, section: &Section) -> &'a dyn Component {
         match section {
-            Section::MessageInput => &self.input_box,
+            Section::MessageInput => &self.message_input_box,
             Section::RoomList => &self.room_list,
         }
     }
 
     fn get_component_for_section_mut<'a>(&'a mut self, section: &Section) -> &'a mut dyn Component {
         match section {
-            Section::MessageInput => &mut self.input_box,
+            Section::MessageInput => &mut self.message_input_box,
             Section::RoomList => &mut self.room_list,
         }
     }
@@ -113,7 +113,7 @@ impl ChatPage {
         section: &Section,
     ) -> &'a mut dyn SectionActivation {
         match section {
-            Section::MessageInput => &mut self.input_box,
+            Section::MessageInput => &mut self.message_input_box,
             Section::RoomList => &mut self.room_list,
         }
     }
@@ -141,6 +141,13 @@ impl ChatPage {
             _ => Color::Reset,
         }
     }
+
+    fn disable_section(&mut self, section: &Section) {
+        self.get_section_activation_for_section(section)
+            .deactivate();
+
+        self.active_section = None;
+    }
 }
 
 impl Component for ChatPage {
@@ -157,7 +164,7 @@ impl Component for ChatPage {
             last_hovered_section: DEFAULT_HOVERED_SECTION,
             // child components
             room_list: RoomList::new(state, action_tx.clone()),
-            input_box: MessageInputBox::new(state, action_tx),
+            message_input_box: MessageInputBox::new(state, action_tx),
         }
         .move_with_state(state)
     }
@@ -170,7 +177,7 @@ impl Component for ChatPage {
             props: Props::from(state),
             // propogate the update to the child components
             room_list: self.room_list.move_with_state(state),
-            input_box: self.input_box.move_with_state(state),
+            message_input_box: self.message_input_box.move_with_state(state),
             ..self
         }
     }
@@ -205,11 +212,15 @@ impl Component for ChatPage {
                 self.get_component_for_section_mut(&section)
                     .handle_key_event(key);
 
-                if key.code == KeyCode::Enter || key.code == KeyCode::Esc {
-                    self.get_section_activation_for_section(&section)
-                        .deactivate();
-
-                    self.active_section = None;
+                // disable the section according to the action taken
+                // the section is disabled when escape is pressed
+                // or when enter is pressed on the room list
+                match section {
+                    Section::RoomList if key.code == KeyCode::Enter => {
+                        self.disable_section(&section)
+                    }
+                    _ if key.code == KeyCode::Esc => self.disable_section(&section),
+                    _ => (),
                 }
             }
         }
@@ -339,7 +350,7 @@ impl ComponentRender<()> for ChatPage {
             List::new(messages).block(Block::default().borders(Borders::ALL).title("Messages"));
         frame.render_widget(messages, container_messages);
 
-        self.input_box.render(
+        self.message_input_box.render(
             frame,
             message_input_box::RenderProps {
                 border_color: self.calculate_border_color(Section::MessageInput),
@@ -395,7 +406,7 @@ impl HasUsageInfo for ChatPage {
         if let Some(section) = self.active_section.as_ref() {
             let handler: &dyn HasUsageInfo = match section {
                 Section::RoomList => &self.room_list,
-                Section::MessageInput => &self.input_box,
+                Section::MessageInput => &self.message_input_box,
             };
 
             handler.usage_info()

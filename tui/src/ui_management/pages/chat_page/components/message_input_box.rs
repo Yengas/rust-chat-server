@@ -47,6 +47,8 @@ impl MessageInputBox {
         let _ = self.action_tx.send(Action::SendMessage {
             content: String::from(self.input_box.text()),
         });
+
+        self.input_box.reset();
     }
 }
 
