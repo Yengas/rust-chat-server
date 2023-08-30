@@ -10,13 +10,13 @@ use tokio::{
     task::{AbortHandle, JoinSet},
 };
 
-use crate::room::{ChatRoom, MessageSender};
+use crate::room::{ChatRoom, SessionAndUsername, UserSessionHandle};
 
 pub(super) struct ChatRoomManager {
     session_id: String,
     username: String,
     all_rooms: HashMap<String, Arc<Mutex<ChatRoom>>>,
-    joined_rooms: HashMap<String, (MessageSender, AbortHandle)>,
+    joined_rooms: HashMap<String, (UserSessionHandle, AbortHandle)>,
     join_set: JoinSet<()>,
     mpsc_tx: mpsc::Sender<Event>,
     mpsc_rx: mpsc::Receiver<Event>,
@@ -54,14 +54,19 @@ impl ChatRoomManager {
                     .get(&cmd.room)
                     .ok_or_else(|| anyhow::anyhow!("room not found"))?;
 
-                let (urp, participants) = {
+                let (mut broadcast_rx, user_session_handle, user_ids) = {
                     let mut room = room.lock().await;
-                    let urp = room.add_participant(self.session_id.clone(), self.username.clone());
+                    let (broadcast_rx, user_session_handle) = room.join(SessionAndUsername {
+                        session_id: self.session_id.clone(),
+                        username: self.username.clone(),
+                    });
 
-                    (urp, room.participants().clone())
+                    (
+                        broadcast_rx,
+                        user_session_handle,
+                        room.get_unique_user_ids().clone(),
+                    )
                 };
-
-                let (message_sender, mut broadcast_rx) = (urp.message_sender, urp.broadcast_rx);
 
                 // spawn a task to forward broadcasted messages to the users' mpsc channel
                 // hence the user can receive messages from different rooms via single channel
@@ -72,7 +77,7 @@ impl ChatRoomManager {
                     mpsc_tx
                         .send(Event::UserJoinedRoom(event::UserJoinedRoomReplyEvent {
                             room: cmd.room.clone(),
-                            users: participants.into_iter().collect(),
+                            users: user_ids,
                         }))
                         .await?;
 
@@ -83,14 +88,14 @@ impl ChatRoomManager {
                     }
                 });
 
-                // store references to the message sender and abort handle
+                // store references to the user session handle and abort handle
                 // this is used to send messages to the room and to cancel the task when user leaves the room
                 self.joined_rooms
-                    .insert(cmd.room.clone(), (message_sender, abort_handle));
+                    .insert(cmd.room.clone(), (user_session_handle, abort_handle));
             }
             UserCommand::SendMessage(cmd) => {
-                if let Some((message_sender, _)) = self.joined_rooms.get(&cmd.room) {
-                    let _ = message_sender.send(cmd.content);
+                if let Some((user_session_handle, _)) = self.joined_rooms.get(&cmd.room) {
+                    let _ = user_session_handle.send_message(cmd.content);
                 }
             }
             UserCommand::LeaveRoom(cmd) => {
@@ -123,7 +128,7 @@ impl ChatRoomManager {
     async fn cleanup_room(
         &mut self,
         room_name: &String,
-        (message_sender, abort_handle): (MessageSender, AbortHandle),
+        (user_session_handle, abort_handle): (UserSessionHandle, AbortHandle),
     ) -> anyhow::Result<()> {
         {
             let mut room = self
@@ -133,7 +138,7 @@ impl ChatRoomManager {
                 .lock()
                 .await;
 
-            room.remove_participant(message_sender);
+            room.leave(user_session_handle);
         }
 
         abort_handle.abort();

@@ -1,25 +1,28 @@
 use std::collections::{HashMap, HashSet};
 
-use super::MessageSender;
+use super::user_session_handle::UserSessionHandle;
 
 #[derive(Debug)]
-pub struct RoomParticipationList {
+pub struct UserRegistry {
     username_to_sessions: HashMap<String, HashSet<String>>,
     usernames: HashSet<String>,
 }
 
-impl RoomParticipationList {
+/// [UserRegistry] is a smart container for keeping track of which unique list of users are in a room
+///
+/// Since a user can have multiple sessions, we need to keep track of which sessions belong to which users
+impl UserRegistry {
     pub fn new() -> Self {
-        RoomParticipationList {
+        UserRegistry {
             username_to_sessions: HashMap::new(),
             usernames: HashSet::new(),
         }
     }
 
     /// Add a user to the room, returns true if the user is a new user
-    pub fn insert_user(&mut self, message_sender: &MessageSender) -> bool {
-        let username = String::from(message_sender.username());
-        let session_id = String::from(message_sender.session_id());
+    pub fn insert(&mut self, user_session_handle: &UserSessionHandle) -> bool {
+        let username = String::from(user_session_handle.username());
+        let session_id = String::from(user_session_handle.session_id());
 
         let sessions = self
             .username_to_sessions
@@ -39,9 +42,9 @@ impl RoomParticipationList {
 
     /// Removes a given session from the participant list, returns true if the user is no longer in the room
     /// Does nothing and returns false if the user does not exist
-    pub fn remove_user_by_session(&mut self, message_sender: &MessageSender) -> bool {
-        let username = String::from(message_sender.username());
-        let session_id = String::from(message_sender.session_id());
+    pub fn remove(&mut self, user_session_handle: &UserSessionHandle) -> bool {
+        let username = String::from(user_session_handle.username());
+        let session_id = String::from(user_session_handle.session_id());
 
         let to_remove = self.username_to_sessions.get_mut(&username);
 
@@ -61,7 +64,7 @@ impl RoomParticipationList {
         }
     }
 
-    pub fn get_unique_usernames(&self) -> Vec<String> {
+    pub fn get_unique_user_ids(&self) -> Vec<String> {
         self.usernames.iter().cloned().collect()
     }
 }
