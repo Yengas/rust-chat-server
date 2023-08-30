@@ -4,7 +4,7 @@ use comms::event;
 
 #[derive(Debug, Clone)]
 pub enum MessageBoxItem {
-    Message { username: String, content: String },
+    Message { user_id: String, content: String },
     Notification(String),
 }
 
@@ -49,8 +49,8 @@ pub struct State {
     pub server_connection_status: ServerConnectionStatus,
     /// Currently active room
     pub active_room: Option<String>,
-    /// The name of the user
-    pub username: String,
+    /// The id of the user
+    pub user_id: String,
     /// Storage of room data
     pub room_data_map: HashMap<String, RoomData>,
     /// Timer since app was opened
@@ -62,7 +62,7 @@ impl Default for State {
         State {
             server_connection_status: ServerConnectionStatus::Uninitalized,
             active_room: None,
-            username: String::new(),
+            user_id: String::new(),
             room_data_map: HashMap::new(),
             timer: 0,
         }
@@ -73,7 +73,7 @@ impl State {
     pub fn handle_server_event(&mut self, event: &event::Event) {
         match event {
             event::Event::LoginSuccessful(event) => {
-                self.username = event.username.clone();
+                self.user_id = event.user_id.clone();
                 self.room_data_map = event
                     .rooms
                     .clone()
@@ -85,14 +85,14 @@ impl State {
                 if let Some(room_data) = self.room_data_map.get_mut(&event.room) {
                     match event.status {
                         event::RoomParticipationStatus::Joined => {
-                            room_data.users.insert(event.username.clone());
-                            if event.username == self.username {
+                            room_data.users.insert(event.user_id.clone());
+                            if event.user_id == self.user_id {
                                 room_data.has_joined = true;
                             }
                         }
                         event::RoomParticipationStatus::Left => {
-                            room_data.users.remove(&event.username);
-                            if event.username == self.username {
+                            room_data.users.remove(&event.user_id);
+                            if event.user_id == self.user_id {
                                 room_data.has_joined = false;
                             }
                         }
@@ -102,7 +102,7 @@ impl State {
                         .messages
                         .push(MessageBoxItem::Notification(format!(
                             "{} has {} the room",
-                            event.username,
+                            event.user_id,
                             match event.status {
                                 event::RoomParticipationStatus::Joined => "joined",
                                 event::RoomParticipationStatus::Left => "left",
@@ -118,7 +118,7 @@ impl State {
                 let room_data = self.room_data_map.get_mut(&event.room).unwrap();
 
                 room_data.messages.push(MessageBoxItem::Message {
-                    username: event.username.clone(),
+                    user_id: event.user_id.clone(),
                     content: event.content.clone(),
                 });
 

@@ -49,7 +49,7 @@ impl TryFrom<usize> for Section {
 
 struct Props {
     /// The logged in user
-    username: String,
+    user_id: String,
     /// The currently active room
     active_room: Option<String>,
     /// The timer for the chat page
@@ -61,7 +61,7 @@ struct Props {
 impl From<&State> for Props {
     fn from(state: &State) -> Self {
         Props {
-            username: state.username.clone(),
+            user_id: state.user_id.clone(),
             active_room: state.active_room.clone(),
             timer: state.timer,
             room_data_map: state.room_data_map.clone(),
@@ -258,7 +258,7 @@ impl ComponentRender<()> for ChatPage {
         );
 
         let user_info = Paragraph::new(Text::from(vec![
-            Line::from(format!("User: @{}", self.props.username)),
+            Line::from(format!("User: @{}", self.props.user_id)),
             Line::from(format!("Chatting for: {} secs", self.props.timer)),
         ]))
         .block(
@@ -319,8 +319,8 @@ impl ComponentRender<()> for ChatPage {
                         .iter()
                         .map(|mbi| {
                             let line = match mbi {
-                                MessageBoxItem::Message { username, content } => {
-                                    Line::from(Span::raw(format!("@{}: {}", username, content)))
+                                MessageBoxItem::Message { user_id, content } => {
+                                    Line::from(Span::raw(format!("@{}: {}", user_id, content)))
                                 }
                                 MessageBoxItem::Notification(content) => {
                                     Line::from(Span::raw(content.clone()).italic())
@@ -360,22 +360,21 @@ impl ComponentRender<()> for ChatPage {
             panic!("The left layout should have 2 chunks")
         };
 
-        let room_users_list_items: Vec<ListItem> =
-            if let Some(active_room) = self.props.active_room.as_ref() {
-                self.get_room_data(active_room)
-                    .map(|room_data| {
-                        room_data
-                            .users
-                            .iter()
-                            .map(|user_name| {
-                                ListItem::new(Line::from(Span::raw(format!("@{user_name}"))))
-                            })
-                            .collect::<Vec<ListItem<'_>>>()
-                    })
-                    .unwrap_or_default()
-            } else {
-                vec![]
-            };
+        let room_users_list_items: Vec<ListItem> = if let Some(active_room) =
+            self.props.active_room.as_ref()
+        {
+            self.get_room_data(active_room)
+                .map(|room_data| {
+                    room_data
+                        .users
+                        .iter()
+                        .map(|user_id| ListItem::new(Line::from(Span::raw(format!("@{user_id}")))))
+                        .collect::<Vec<ListItem<'_>>>()
+                })
+                .unwrap_or_default()
+        } else {
+            vec![]
+        };
 
         let room_users_list = List::new(room_users_list_items)
             .block(Block::default().borders(Borders::ALL).title("Room Users"));

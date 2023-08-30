@@ -2,7 +2,7 @@ use comms::event::{self, Event};
 use tokio::sync::broadcast;
 
 use super::{
-    user_registry::UserRegistry, user_session_handle::UserSessionHandle, SessionAndUsername,
+    user_registry::UserRegistry, user_session_handle::UserSessionHandle, SessionAndUserId,
 };
 
 #[derive(Debug, Clone)]
@@ -55,22 +55,19 @@ impl ChatRoom {
     /// - A [UserSessionHandle] for the user to be able to interact with the room
     pub fn join(
         &mut self,
-        session_and_username: SessionAndUsername,
+        session_and_user_id: SessionAndUserId,
     ) -> (broadcast::Receiver<Event>, UserSessionHandle) {
         let broadcast_tx = self.broadcast_tx.clone();
         let broadcast_rx = broadcast_tx.subscribe();
-        let user_session_handle = UserSessionHandle::new(
-            self.name.clone(),
-            broadcast_tx,
-            session_and_username.clone(),
-        );
+        let user_session_handle =
+            UserSessionHandle::new(self.name.clone(), broadcast_tx, session_and_user_id.clone());
 
-        // If the user is new e.g. they do not have another session with same username,
+        // If the user is new e.g. they do not have another session with same user id,
         // broadcast that they joined to all users
         if self.user_registry.insert(&user_session_handle) {
             let _ = self.broadcast_tx.send(event::Event::RoomParticipation(
                 event::RoomParticipationBroacastEvent {
-                    username: session_and_username.username.clone(),
+                    user_id: session_and_user_id.user_id.clone(),
                     room: self.name.clone(),
                     status: event::RoomParticipationStatus::Joined,
                 },
@@ -86,7 +83,7 @@ impl ChatRoom {
         if self.user_registry.remove(&user_session_handle) {
             let _ = self.broadcast_tx.send(event::Event::RoomParticipation(
                 event::RoomParticipationBroacastEvent {
-                    username: String::from(user_session_handle.username()),
+                    user_id: String::from(user_session_handle.user_id()),
                     room: self.name.clone(),
                     status: event::RoomParticipationStatus::Left,
                 },

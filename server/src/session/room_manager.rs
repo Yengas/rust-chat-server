@@ -10,11 +10,11 @@ use tokio::{
     task::{AbortHandle, JoinSet},
 };
 
-use crate::room::{ChatRoom, SessionAndUsername, UserSessionHandle};
+use crate::room::{ChatRoom, SessionAndUserId, UserSessionHandle};
 
 pub(super) struct ChatRoomManager {
     session_id: String,
-    username: String,
+    user_id: String,
     all_rooms: HashMap<String, Arc<Mutex<ChatRoom>>>,
     joined_rooms: HashMap<String, (UserSessionHandle, AbortHandle)>,
     join_set: JoinSet<()>,
@@ -25,14 +25,14 @@ pub(super) struct ChatRoomManager {
 impl ChatRoomManager {
     pub fn new(
         session_id: &str,
-        username: &str,
+        user_id: &str,
         chat_rooms: HashMap<String, Arc<Mutex<ChatRoom>>>,
     ) -> Self {
         let (mpsc_tx, mpsc_rx) = mpsc::channel(100);
 
         ChatRoomManager {
             session_id: String::from(session_id),
-            username: String::from(username),
+            user_id: String::from(user_id),
             all_rooms: chat_rooms,
             joined_rooms: HashMap::new(),
             join_set: JoinSet::new(),
@@ -56,9 +56,9 @@ impl ChatRoomManager {
 
                 let (mut broadcast_rx, user_session_handle, user_ids) = {
                     let mut room = room.lock().await;
-                    let (broadcast_rx, user_session_handle) = room.join(SessionAndUsername {
+                    let (broadcast_rx, user_session_handle) = room.join(SessionAndUserId {
                         session_id: self.session_id.clone(),
-                        username: self.username.clone(),
+                        user_id: self.user_id.clone(),
                     });
 
                     (

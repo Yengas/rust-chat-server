@@ -17,9 +17,9 @@ pub struct LoginSuccessfulReplyEvent {
     /// The session id for the connection
     #[serde(rename = "s")]
     pub session_id: String,
-    /// The username of the user that has logged in
+    /// The id of the user that has logged in
     #[serde(rename = "u")]
-    pub username: String,
+    pub user_id: String,
     /// The list of rooms the user can participate, unique and ordered
     #[serde(rename = "rs")]
     pub rooms: Vec<RoomDetail>,
@@ -39,9 +39,9 @@ pub struct RoomParticipationBroacastEvent {
     /// The slug of the room the user has joined or left
     #[serde(rename = "r")]
     pub room: String,
-    /// The username of the user that has joined or left
+    /// The id of the user that has joined or left
     #[serde(rename = "u")]
-    pub username: String,
+    pub user_id: String,
     /// The new status of the user in the room
     #[serde(rename = "s")]
     pub status: RoomParticipationStatus,
@@ -64,9 +64,9 @@ pub struct UserMessageBroadcastEvent {
     /// The slug of the room the user has sent the message to
     #[serde(rename = "r")]
     pub room: String,
-    /// The username of the user that has sent the message
+    /// The id of the user that has sent the message
     #[serde(rename = "u")]
-    pub username: String,
+    pub user_id: String,
     /// The content of the message
     #[serde(rename = "c")]
     pub content: String,
@@ -99,7 +99,7 @@ mod tests {
     fn test_login_successful_event() {
         let event = Event::LoginSuccessful(LoginSuccessfulReplyEvent {
             session_id: "session-id-1".to_string(),
-            username: "username-1".to_string(),
+            user_id: "user-id-1".to_string(),
             rooms: vec![RoomDetail {
                 name: "room-1".to_string(),
                 description: "some description".to_string(),
@@ -108,7 +108,7 @@ mod tests {
 
         assert_event_serialization(
             &event,
-            r#"{"_et":"login_successful","s":"session-id-1","u":"username-1","rs":[{"n":"room-1","d":"some description"}]}"#,
+            r#"{"_et":"login_successful","s":"session-id-1","u":"user-id-1","rs":[{"n":"room-1","d":"some description"}]}"#,
         );
     }
 
@@ -116,7 +116,7 @@ mod tests {
     fn test_room_participation_join_event() {
         let event = Event::RoomParticipation(RoomParticipationBroacastEvent {
             room: "test".to_string(),
-            username: "test".to_string(),
+            user_id: "test".to_string(),
             status: RoomParticipationStatus::Joined,
         });
 
@@ -130,7 +130,7 @@ mod tests {
     fn test_room_participation_leave_event() {
         let event = Event::RoomParticipation(RoomParticipationBroacastEvent {
             room: "test".to_string(),
-            username: "test".to_string(),
+            user_id: "test".to_string(),
             status: RoomParticipationStatus::Left,
         });
 
@@ -157,7 +157,7 @@ mod tests {
     fn test_user_message_event() {
         let event = Event::UserMessage(UserMessageBroadcastEvent {
             room: "test".to_string(),
-            username: "test".to_string(),
+            user_id: "test".to_string(),
             content: "test".to_string(),
         });
 

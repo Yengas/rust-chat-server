@@ -32,7 +32,7 @@ async fn assert_server_client_transport() {
     assert_eq!(
         client_collected_events.unwrap(),
         vec![Event::LoginSuccessful(event::LoginSuccessfulReplyEvent {
-            username: "username-1".into(),
+            user_id: "user-id-1".into(),
             session_id: "session-id-1".into(),
             rooms: Vec::default(),
         }),]
@@ -59,7 +59,7 @@ async fn execute_server() -> anyhow::Result<Vec<command::UserCommand>> {
     // welcome the user with some login successful reply event
     event_writer
         .write(&Event::LoginSuccessful(event::LoginSuccessfulReplyEvent {
-            username: "username-1".into(),
+            user_id: "user-id-1".into(),
             session_id: "session-id-1".into(),
             rooms: Vec::default(),
         }))

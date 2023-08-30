@@ -26,8 +26,8 @@ pub async fn handle_user_session(
     stream: TcpStream,
 ) -> anyhow::Result<()> {
     let session_id = nanoid!();
-    // Generate a random username for the user, since we don't have a login system
-    let username = String::from(&nanoid!()[0..5]);
+    // Generate a random id for the user, since we don't have a login system
+    let user_id = String::from(&nanoid!()[0..5]);
     // Split the tcp stream into a command stream and an event writer with better ergonomics
     let (mut commands, mut event_writer) = transport::server::split_tcp_stream(stream);
 
@@ -36,7 +36,7 @@ pub async fn handle_user_session(
         .write(&event::Event::LoginSuccessful(
             event::LoginSuccessfulReplyEvent {
                 session_id: session_id.clone(),
-                username: username.clone(),
+                user_id: user_id.clone(),
                 rooms: chat_rooms
                     .iter()
                     .map(|(metadata, _)| RoomDetail {
@@ -54,7 +54,7 @@ pub async fn handle_user_session(
         .into_iter()
         .map(|(metadata, room)| (metadata.name, room))
         .collect::<HashMap<_, _>>();
-    let mut room_manager = ChatRoomManager::new(&session_id, &username, chat_rooms);
+    let mut room_manager = ChatRoomManager::new(&session_id, &user_id, chat_rooms);
 
     loop {
         tokio::select! {

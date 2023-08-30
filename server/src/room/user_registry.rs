@@ -4,8 +4,8 @@ use super::user_session_handle::UserSessionHandle;
 
 #[derive(Debug)]
 pub struct UserRegistry {
-    username_to_sessions: HashMap<String, HashSet<String>>,
-    usernames: HashSet<String>,
+    user_id_to_sessions: HashMap<String, HashSet<String>>,
+    user_ids: HashSet<String>,
 }
 
 /// [UserRegistry] is a smart container for keeping track of which unique list of users are in a room
@@ -14,19 +14,19 @@ pub struct UserRegistry {
 impl UserRegistry {
     pub fn new() -> Self {
         UserRegistry {
-            username_to_sessions: HashMap::new(),
-            usernames: HashSet::new(),
+            user_id_to_sessions: HashMap::new(),
+            user_ids: HashSet::new(),
         }
     }
 
     /// Add a user to the room, returns true if the user is a new user
     pub fn insert(&mut self, user_session_handle: &UserSessionHandle) -> bool {
-        let username = String::from(user_session_handle.username());
+        let user_id = String::from(user_session_handle.user_id());
         let session_id = String::from(user_session_handle.session_id());
 
         let sessions = self
-            .username_to_sessions
-            .entry(username.clone())
+            .user_id_to_sessions
+            .entry(user_id.clone())
             .or_insert_with(HashSet::new);
 
         sessions.insert(session_id);
@@ -34,7 +34,7 @@ impl UserRegistry {
         let is_new_user = sessions.len() == 1;
 
         if is_new_user {
-            self.usernames.insert(username);
+            self.user_ids.insert(user_id);
         }
 
         is_new_user
@@ -43,17 +43,17 @@ impl UserRegistry {
     /// Removes a given session from the participant list, returns true if the user is no longer in the room
     /// Does nothing and returns false if the user does not exist
     pub fn remove(&mut self, user_session_handle: &UserSessionHandle) -> bool {
-        let username = String::from(user_session_handle.username());
+        let user_id = String::from(user_session_handle.user_id());
         let session_id = String::from(user_session_handle.session_id());
 
-        let to_remove = self.username_to_sessions.get_mut(&username);
+        let to_remove = self.user_id_to_sessions.get_mut(&user_id);
 
         if let Some(sessions) = to_remove {
             sessions.remove(&session_id);
 
             if sessions.is_empty() {
-                self.username_to_sessions.remove(&username);
-                self.usernames.remove(&username);
+                self.user_id_to_sessions.remove(&user_id);
+                self.user_ids.remove(&user_id);
 
                 true
             } else {
@@ -65,6 +65,6 @@ impl UserRegistry {
     }
 
     pub fn get_unique_user_ids(&self) -> Vec<String> {
-        self.usernames.iter().cloned().collect()
+        self.user_ids.iter().cloned().collect()
     }
 }
