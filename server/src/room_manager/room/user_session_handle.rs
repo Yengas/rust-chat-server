@@ -35,11 +35,15 @@ impl UserSessionHandle {
         }
     }
 
-    pub(super) fn session_id(&self) -> &str {
+    pub fn room(&self) -> &str {
+        &self.room
+    }
+
+    pub fn session_id(&self) -> &str {
         &self.session_and_user_id.session_id
     }
 
-    pub(super) fn user_id(&self) -> &str {
+    pub fn user_id(&self) -> &str {
         &self.session_and_user_id.user_id
     }
 

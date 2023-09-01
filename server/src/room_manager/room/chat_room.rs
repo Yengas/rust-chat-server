@@ -6,7 +6,7 @@ use super::{
 };
 
 #[derive(Debug, Clone)]
-/// ChatRoomMetadata is a struct that holds the metadata of a chat room.
+/// [ChatRoomMetadata] holds the metadata that identifies a chat room
 pub struct ChatRoomMetadata {
     pub name: String,
     pub description: String,
@@ -27,17 +27,17 @@ const BROADCAST_CHANNEL_CAPACITY: usize = 100;
 /// [ChatRoom] handles the participants of a chat room and the primary broadcast channel
 /// A [UserSessionHandle] is handed out to a user when they join the room
 pub struct ChatRoom {
-    name: String,
+    metadata: ChatRoomMetadata,
     broadcast_tx: broadcast::Sender<event::Event>,
     user_registry: UserRegistry,
 }
 
 impl ChatRoom {
-    pub fn new(metadata: &ChatRoomMetadata) -> Self {
+    pub fn new(metadata: ChatRoomMetadata) -> Self {
         let (broadcast_tx, _) = broadcast::channel(BROADCAST_CHANNEL_CAPACITY);
 
         ChatRoom {
-            name: String::from(&metadata.name),
+            metadata,
             broadcast_tx,
             user_registry: UserRegistry::new(),
         }
@@ -55,12 +55,15 @@ impl ChatRoom {
     /// - A [UserSessionHandle] for the user to be able to interact with the room
     pub fn join(
         &mut self,
-        session_and_user_id: SessionAndUserId,
+        session_and_user_id: &SessionAndUserId,
     ) -> (broadcast::Receiver<Event>, UserSessionHandle) {
         let broadcast_tx = self.broadcast_tx.clone();
         let broadcast_rx = broadcast_tx.subscribe();
-        let user_session_handle =
-            UserSessionHandle::new(self.name.clone(), broadcast_tx, session_and_user_id.clone());
+        let user_session_handle = UserSessionHandle::new(
+            self.metadata.name.clone(),
+            broadcast_tx,
+            session_and_user_id.clone(),
+        );
 
         // If the user is new e.g. they do not have another session with same user id,
         // broadcast that they joined to all users
@@ -68,7 +71,7 @@ impl ChatRoom {
             let _ = self.broadcast_tx.send(event::Event::RoomParticipation(
                 event::RoomParticipationBroacastEvent {
                     user_id: session_and_user_id.user_id.clone(),
-                    room: self.name.clone(),
+                    room: self.metadata.name.clone(),
                     status: event::RoomParticipationStatus::Joined,
                 },
             ));
@@ -84,7 +87,7 @@ impl ChatRoom {
             let _ = self.broadcast_tx.send(event::Event::RoomParticipation(
                 event::RoomParticipationBroacastEvent {
                     user_id: String::from(user_session_handle.user_id()),
-                    room: self.name.clone(),
+                    room: self.metadata.name.clone(),
                     status: event::RoomParticipationStatus::Left,
                 },
             ));

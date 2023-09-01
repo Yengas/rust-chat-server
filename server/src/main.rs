@@ -1,16 +1,15 @@
 use std::sync::Arc;
 
 use anyhow::Context;
+use room_manager::RoomManagerBuilder;
 use tokio::{
     net::TcpListener,
     signal::unix::{signal, SignalKind},
-    sync::{broadcast, Mutex},
+    sync::broadcast,
     task::JoinSet,
 };
 
-use crate::room::{ChatRoom, ChatRoomMetadata};
-
-mod room;
+mod room_manager;
 mod session;
 
 const PORT: u16 = 8080;
@@ -18,39 +17,34 @@ const PORT: u16 = 8080;
 #[tokio::main]
 async fn main() {
     let mut join_set: JoinSet<anyhow::Result<()>> = JoinSet::new();
-    let chat_rooms: Vec<(ChatRoomMetadata, Arc<Mutex<ChatRoom>>)> = vec![
-        ChatRoomMetadata::new("general", "General discussions and community bonding"),
-        ChatRoomMetadata::new("rust", "Talk about the Rust programming language"),
-        ChatRoomMetadata::new("web-dev", "All about web development"),
-        ChatRoomMetadata::new("ml", "Machine learning algorithms and research"),
-        ChatRoomMetadata::new("tech-news", "Latest tech news and opinions"),
-        ChatRoomMetadata::new("gaming", "Discuss games and gaming hardware"),
-        ChatRoomMetadata::new("open-src", "Open source collaboration and projects"),
-        ChatRoomMetadata::new("blockchain", "Blockchain and cryptocurrencies"),
-        ChatRoomMetadata::new("startups", "Startup ideas and entrepreneurship"),
-        ChatRoomMetadata::new("design", "Design principles and user experience"),
-        ChatRoomMetadata::new("cloud-devops", "Cloud computing and DevOps practices"),
-        ChatRoomMetadata::new("security", "Cybersecurity and ethical hacking"),
-        ChatRoomMetadata::new("freelance", "Freelancing experiences and networking"),
-        ChatRoomMetadata::new("hardware", "Hardware development and IoT"),
-        ChatRoomMetadata::new("ai", "Discuss artificial intelligence topics"),
-        ChatRoomMetadata::new("mobile-dev", "Mobile app development and tools"),
-        ChatRoomMetadata::new("data-sci", "Data science techniques and tools"),
-        ChatRoomMetadata::new("networking", "Networking protocols and technologies"),
-        ChatRoomMetadata::new("os-dev", "Operating system development and kernel hacking"),
-        ChatRoomMetadata::new("databases", "Database management and SQL"),
-        ChatRoomMetadata::new("frontend", "Frontend development and frameworks"),
-        ChatRoomMetadata::new("robotics", "Robotics engineering and automation"),
-        ChatRoomMetadata::new("academia", "Research, papers, and academic discussions"),
-        ChatRoomMetadata::new("career-advice", "Career growth and job-hunting tips"),
-    ]
-    .into_iter()
-    .map(|metadata| {
-        let room = ChatRoom::new(&metadata);
-
-        (metadata, Arc::new(Mutex::new(room)))
-    })
-    .collect();
+    let room_manager = Arc::new(
+        RoomManagerBuilder::new()
+            .create_room("general", "General discussions and community bonding")
+            .create_room("rust", "Talk about the Rust programming language")
+            .create_room("web-dev", "All about web development")
+            .create_room("ml", "Machine learning algorithms and research")
+            .create_room("tech-news", "Latest tech news and opinions")
+            .create_room("gaming", "Discuss games and gaming hardware")
+            .create_room("open-src", "Open source collaboration and projects")
+            .create_room("blockchain", "Blockchain and cryptocurrencies")
+            .create_room("startups", "Startup ideas and entrepreneurship")
+            .create_room("design", "Design principles and user experience")
+            .create_room("cloud-devops", "Cloud computing and DevOps practices")
+            .create_room("security", "Cybersecurity and ethical hacking")
+            .create_room("freelance", "Freelancing experiences and networking")
+            .create_room("hardware", "Hardware development and IoT")
+            .create_room("ai", "Discuss artificial intelligence topics")
+            .create_room("mobile-dev", "Mobile app development and tools")
+            .create_room("data-sci", "Data science techniques and tools")
+            .create_room("networking", "Networking protocols and technologies")
+            .create_room("os-dev", "Operating system development and kernel hacking")
+            .create_room("databases", "Database management and SQL")
+            .create_room("frontend", "Frontend development and frameworks")
+            .create_room("robotics", "Robotics engineering and automation")
+            .create_room("academia", "Research, papers, and academic discussions")
+            .create_room("career-advice", "Career growth and job-hunting tips")
+            .build(),
+    );
 
     let mut interrupt =
         signal(SignalKind::interrupt()).expect("failed to create interrupt signal stream");
@@ -68,7 +62,7 @@ async fn main() {
                 break;
             }
             Ok((socket, _)) = server.accept() => {
-                join_set.spawn(session::handle_user_session(chat_rooms.clone(), quit_rx.resubscribe(), socket));
+                join_set.spawn(session::handle_user_session(Arc::clone(&room_manager), quit_rx.resubscribe(), socket));
             }
         }
     }

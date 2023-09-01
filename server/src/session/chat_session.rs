@@ -6,34 +6,32 @@ use comms::{
     event::{self, Event},
 };
 use tokio::{
-    sync::{mpsc, Mutex},
+    sync::mpsc,
     task::{AbortHandle, JoinSet},
 };
 
-use crate::room::{ChatRoom, SessionAndUserId, UserSessionHandle};
+use crate::room_manager::{RoomManager, SessionAndUserId, UserSessionHandle};
 
-pub(super) struct ChatRoomManager {
-    session_id: String,
-    user_id: String,
-    all_rooms: HashMap<String, Arc<Mutex<ChatRoom>>>,
+pub(super) struct ChatSession {
+    session_and_user_id: SessionAndUserId,
+    room_manager: Arc<RoomManager>,
     joined_rooms: HashMap<String, (UserSessionHandle, AbortHandle)>,
     join_set: JoinSet<()>,
     mpsc_tx: mpsc::Sender<Event>,
     mpsc_rx: mpsc::Receiver<Event>,
 }
 
-impl ChatRoomManager {
-    pub fn new(
-        session_id: &str,
-        user_id: &str,
-        chat_rooms: HashMap<String, Arc<Mutex<ChatRoom>>>,
-    ) -> Self {
+impl ChatSession {
+    pub fn new(session_id: &str, user_id: &str, room_manager: Arc<RoomManager>) -> Self {
         let (mpsc_tx, mpsc_rx) = mpsc::channel(100);
-
-        ChatRoomManager {
+        let session_and_user_id = SessionAndUserId {
             session_id: String::from(session_id),
             user_id: String::from(user_id),
-            all_rooms: chat_rooms,
+        };
+
+        ChatSession {
+            session_and_user_id,
+            room_manager,
             joined_rooms: HashMap::new(),
             join_set: JoinSet::new(),
             mpsc_tx,
@@ -46,27 +44,13 @@ impl ChatRoomManager {
         match cmd {
             UserCommand::JoinRoom(cmd) => {
                 if self.joined_rooms.contains_key(&cmd.room) {
-                    return Err(anyhow::anyhow!("already joined room"));
+                    return Err(anyhow::anyhow!("already joined room '{}'", &cmd.room));
                 }
 
-                let room = self
-                    .all_rooms
-                    .get(&cmd.room)
-                    .ok_or_else(|| anyhow::anyhow!("room not found"))?;
-
-                let (mut broadcast_rx, user_session_handle, user_ids) = {
-                    let mut room = room.lock().await;
-                    let (broadcast_rx, user_session_handle) = room.join(SessionAndUserId {
-                        session_id: self.session_id.clone(),
-                        user_id: self.user_id.clone(),
-                    });
-
-                    (
-                        broadcast_rx,
-                        user_session_handle,
-                        room.get_unique_user_ids().clone(),
-                    )
-                };
+                let (mut broadcast_rx, user_session_handle, user_ids) = self
+                    .room_manager
+                    .join_room(&cmd.room, &self.session_and_user_id)
+                    .await?;
 
                 // spawn a task to forward broadcasted messages to the users' mpsc channel
                 // hence the user can receive messages from different rooms via single channel
@@ -99,9 +83,9 @@ impl ChatRoomManager {
                 }
             }
             UserCommand::LeaveRoom(cmd) => {
-                // remove the room from joined rooms and trigger cleanup for the removed values
+                // remove the room from joined rooms and drop user session handle for the room
                 if let Some(urp) = self.joined_rooms.remove(&cmd.room) {
-                    self.cleanup_room(&cmd.room, urp).await?;
+                    self.cleanup_room(urp).await?;
                 }
             }
             _ => {}
@@ -116,8 +100,8 @@ impl ChatRoomManager {
         // drain the joined rooms to a variable, necessary to avoid borrowing self
         let drained = self.joined_rooms.drain().collect::<Vec<_>>();
 
-        for (room_name, urp) in drained {
-            self.cleanup_room(&room_name, urp).await?;
+        for (_, urp) in drained {
+            self.cleanup_room(urp).await?;
         }
 
         Ok(())
@@ -127,19 +111,11 @@ impl ChatRoomManager {
     /// aborting the task that forwards broadcasted messages to the user
     async fn cleanup_room(
         &mut self,
-        room_name: &String,
         (user_session_handle, abort_handle): (UserSessionHandle, AbortHandle),
     ) -> anyhow::Result<()> {
-        {
-            let mut room = self
-                .all_rooms
-                .get(room_name)
-                .ok_or_else(|| anyhow::anyhow!("room not found"))?
-                .lock()
-                .await;
-
-            room.leave(user_session_handle);
-        }
+        self.room_manager
+            .drop_user_session_handle(user_session_handle)
+            .await?;
 
         abort_handle.abort();
 
