@@ -9,43 +9,28 @@ use tokio::{
     task::JoinSet,
 };
 
+use crate::room_manager::ChatRoomMetadata;
+
 mod room_manager;
 mod session;
 
 const PORT: u16 = 8080;
+const CHAT_ROOMS_METADATAS: &str = include_str!("../resources/chat_rooms_metadatas.json");
 
 #[tokio::main]
 async fn main() {
-    let mut join_set: JoinSet<anyhow::Result<()>> = JoinSet::new();
+    let chat_room_metadatas: Vec<ChatRoomMetadata> = serde_json::from_str(CHAT_ROOMS_METADATAS)
+        .expect("could not parse the chat rooms metadatas");
     let room_manager = Arc::new(
-        RoomManagerBuilder::new()
-            .create_room("general", "General discussions and community bonding")
-            .create_room("rust", "Talk about the Rust programming language")
-            .create_room("web-dev", "All about web development")
-            .create_room("ml", "Machine learning algorithms and research")
-            .create_room("tech-news", "Latest tech news and opinions")
-            .create_room("gaming", "Discuss games and gaming hardware")
-            .create_room("open-src", "Open source collaboration and projects")
-            .create_room("blockchain", "Blockchain and cryptocurrencies")
-            .create_room("startups", "Startup ideas and entrepreneurship")
-            .create_room("design", "Design principles and user experience")
-            .create_room("cloud-devops", "Cloud computing and DevOps practices")
-            .create_room("security", "Cybersecurity and ethical hacking")
-            .create_room("freelance", "Freelancing experiences and networking")
-            .create_room("hardware", "Hardware development and IoT")
-            .create_room("ai", "Discuss artificial intelligence topics")
-            .create_room("mobile-dev", "Mobile app development and tools")
-            .create_room("data-sci", "Data science techniques and tools")
-            .create_room("networking", "Networking protocols and technologies")
-            .create_room("os-dev", "Operating system development and kernel hacking")
-            .create_room("databases", "Database management and SQL")
-            .create_room("frontend", "Frontend development and frameworks")
-            .create_room("robotics", "Robotics engineering and automation")
-            .create_room("academia", "Research, papers, and academic discussions")
-            .create_room("career-advice", "Career growth and job-hunting tips")
+        chat_room_metadatas
+            .into_iter()
+            .fold(RoomManagerBuilder::new(), |builder, metadata| {
+                builder.create_room(metadata)
+            })
             .build(),
     );
 
+    let mut join_set: JoinSet<anyhow::Result<()>> = JoinSet::new();
     let mut interrupt =
         signal(SignalKind::interrupt()).expect("failed to create interrupt signal stream");
     let server = TcpListener::bind(format!("0.0.0.0:{}", PORT))

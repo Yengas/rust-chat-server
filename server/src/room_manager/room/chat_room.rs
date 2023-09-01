@@ -1,24 +1,16 @@
 use comms::event::{self, Event};
+use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
 
 use super::{
     user_registry::UserRegistry, user_session_handle::UserSessionHandle, SessionAndUserId,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 /// [ChatRoomMetadata] holds the metadata that identifies a chat room
 pub struct ChatRoomMetadata {
     pub name: String,
     pub description: String,
-}
-
-impl ChatRoomMetadata {
-    pub fn new(name: &str, description: &str) -> Self {
-        ChatRoomMetadata {
-            name: String::from(name),
-            description: String::from(description),
-        }
-    }
 }
 
 const BROADCAST_CHANNEL_CAPACITY: usize = 100;

@@ -13,3 +13,7 @@ serde = "1.0.188"
 serde_json = "1.0.105"
 tokio = { version = "1.32.0", features = ["full"] }
 tokio-stream = { version = "0.1.14" }
+
+[dev-dependencies]
+rand = "0.8.5"
+comms = { path = "../comms", features = ["client"] }

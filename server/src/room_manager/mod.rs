@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use tokio::sync::Mutex;
 
-use self::room::{ChatRoom, ChatRoomMetadata};
-pub use self::room::{SessionAndUserId, UserSessionHandle};
+use self::room::ChatRoom;
+pub use self::room::{ChatRoomMetadata, SessionAndUserId, UserSessionHandle};
 
 pub use self::room_manager::RoomManager;
 
@@ -25,14 +25,13 @@ impl RoomManagerBuilder {
 
     /// Add a room to the room manager
     /// Will panic if a room with the same name already exists
-    pub fn create_room(mut self, name: &str, description: &str) -> Self {
-        let metadata = ChatRoomMetadata::new(name, description);
+    pub fn create_room(mut self, metadata: ChatRoomMetadata) -> Self {
         let chat_room = Arc::new(Mutex::new(ChatRoom::new(metadata.clone())));
 
         if self
             .chat_rooms
             .iter()
-            .any(|(metadata, _)| metadata.name.eq(name))
+            .any(|(m, _)| m.name.eq(&metadata.name))
         {
             panic!("room with the same name already exists");
         }

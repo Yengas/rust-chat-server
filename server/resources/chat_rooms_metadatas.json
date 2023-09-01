@@ -1,0 +1,98 @@
+[
+    {
+        "name": "general",
+        "description": "General discussions and community bonding"
+    },
+    {
+        "name": "rust",
+        "description": "Talk about the Rust programming language"
+    },
+    {
+        "name": "web-dev",
+        "description": "All about web development"
+    },
+    {
+        "name": "ml",
+        "description": "Machine learning algorithms and research"
+    },
+    {
+        "name": "tech-news",
+        "description": "Latest tech news and opinions"
+    },
+    {
+        "name": "gaming",
+        "description": "Discuss games and gaming hardware"
+    },
+    {
+        "name": "open-src",
+        "description": "Open source collaboration and projects"
+    },
+    {
+        "name": "blockchain",
+        "description": "Blockchain and cryptocurrencies"
+    },
+    {
+        "name": "startups",
+        "description": "Startup ideas and entrepreneurship"
+    },
+    {
+        "name": "design",
+        "description": "Design principles and user experience"
+    },
+    {
+        "name": "cloud-devops",
+        "description": "Cloud computing and DevOps practices"
+    },
+    {
+        "name": "security",
+        "description": "Cybersecurity and ethical hacking"
+    },
+    {
+        "name": "freelance",
+        "description": "Freelancing experiences and networking"
+    },
+    {
+        "name": "hardware",
+        "description": "Hardware development and IoT"
+    },
+    {
+        "name": "ai",
+        "description": "Discuss artificial intelligence topics"
+    },
+    {
+        "name": "mobile-dev",
+        "description": "Mobile app development and tools"
+    },
+    {
+        "name": "data-sci",
+        "description": "Data science techniques and tools"
+    },
+    {
+        "name": "networking",
+        "description": "Networking protocols and technologies"
+    },
+    {
+        "name": "os-dev",
+        "description": "Operating system development and kernel hacking"
+    },
+    {
+        "name": "databases",
+        "description": "Database management and SQL"
+    },
+    {
+        "name": "frontend",
+        "description": "Frontend development and frameworks"
+    },
+    {
+        "name": "robotics",
+        "description": "Robotics engineering and automation"
+    },
+    {
+        "name": "academia",
+        "description": "Research, papers, and academic discussions"
+    },
+    {
+        "name": "career-advice",
+        "description": "Career growth and job-hunting tips"
+    }
+]
