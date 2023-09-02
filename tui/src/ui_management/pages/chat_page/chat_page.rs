@@ -229,10 +229,9 @@ impl Component for ChatPage {
 
 const NO_ROOM_SELECTED_MESSAGE: &str = "Join at least one room to start chatting!";
 
-// TODO: move the message list to listview and make it scrollable
-fn calculate_message_list_offset(height: u16, messages_len: usize) -> usize {
-    // minus 2 for borders
-    messages_len.saturating_sub(height as usize - 2)
+fn calculate_list_offset(height: u16, items_len: usize) -> usize {
+    // go back by (container height + 2 for borders) to get the offset
+    items_len.saturating_sub(height as usize - 2)
 }
 
 impl ComponentRender<()> for ChatPage {
@@ -321,13 +320,13 @@ impl ComponentRender<()> for ChatPage {
         let messages = if let Some(active_room) = self.props.active_room.as_ref() {
             self.get_room_data(active_room)
                 .map(|room_data| {
-                    let message_offset = calculate_message_list_offset(
-                        container_messages.height,
-                        room_data.messages.len(),
-                    );
+                    let message_offset =
+                        calculate_list_offset(container_messages.height, room_data.messages.len());
 
-                    room_data.messages[message_offset..]
-                        .iter()
+                    room_data
+                        .messages
+                        .asc_iter()
+                        .skip(message_offset)
                         .map(|mbi| {
                             let line = match mbi {
                                 MessageBoxItem::Message { user_id, content } => {
@@ -346,6 +345,7 @@ impl ComponentRender<()> for ChatPage {
         } else {
             vec![ListItem::new(Line::from(NO_ROOM_SELECTED_MESSAGE))]
         };
+
         let messages =
             List::new(messages).block(Block::default().borders(Borders::ALL).title("Messages"));
         frame.render_widget(messages, container_messages);
@@ -371,24 +371,36 @@ impl ComponentRender<()> for ChatPage {
             panic!("The left layout should have 2 chunks")
         };
 
-        let room_users_list_items: Vec<ListItem> = if let Some(active_room) =
-            self.props.active_room.as_ref()
-        {
-            self.get_room_data(active_room)
-                .map(|room_data| {
-                    room_data
-                        .users
-                        .iter()
-                        .map(|user_id| ListItem::new(Line::from(Span::raw(format!("@{user_id}")))))
-                        .collect::<Vec<ListItem<'_>>>()
-                })
-                .unwrap_or_default()
-        } else {
-            vec![]
-        };
+        let (room_users_list_items, room_users_len) = self
+            .props
+            .active_room
+            .as_ref()
+            .and_then(|active_room| {
+                self.get_room_data(active_room).map(|room_data| {
+                    let room_users_len = room_data.users.len();
+                    let users_offset =
+                        calculate_list_offset(container_room_users.height, room_users_len);
 
-        let room_users_list = List::new(room_users_list_items)
-            .block(Block::default().borders(Borders::ALL).title("Room Users"));
+                    (
+                        room_data
+                            .users
+                            .iter()
+                            .skip(users_offset)
+                            .map(|user_id| {
+                                ListItem::new(Line::from(Span::raw(format!("@{user_id}"))))
+                            })
+                            .collect::<Vec<ListItem<'_>>>(),
+                        room_users_len,
+                    )
+                })
+            })
+            .unwrap_or_else(|| (vec![], 0));
+
+        let room_users_list = List::new(room_users_list_items).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(format!("Room Users ({})", room_users_len)),
+        );
 
         frame.render_widget(room_users_list, container_room_users);
 

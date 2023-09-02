@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use circular_queue::CircularQueue;
 use comms::event;
 
 #[derive(Debug, Clone)]
@@ -8,8 +9,10 @@ pub enum MessageBoxItem {
     Notification(String),
 }
 
+const MAX_MESSAGES_TO_STORE_PER_ROOM: usize = 100;
+
 /// RoomData holds the data for a room
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct RoomData {
     /// The name of the room
     pub name: String,
@@ -18,11 +21,24 @@ pub struct RoomData {
     /// List of users in the room
     pub users: HashSet<String>,
     /// History of recorded messages
-    pub messages: Vec<MessageBoxItem>,
+    pub messages: CircularQueue<MessageBoxItem>,
     /// Has joined the room
     pub has_joined: bool,
     /// Has unread messages
     pub has_unread: bool,
+}
+
+impl Default for RoomData {
+    fn default() -> Self {
+        RoomData {
+            name: String::new(),
+            description: String::new(),
+            users: HashSet::new(),
+            messages: CircularQueue::with_capacity(MAX_MESSAGES_TO_STORE_PER_ROOM),
+            has_joined: false,
+            has_unread: false,
+        }
+    }
 }
 
 impl RoomData {
