@@ -6,10 +6,17 @@ use comms::{
     transport,
 };
 use nanoid::nanoid;
-use rand::{rngs::StdRng, seq::SliceRandom, SeedableRng};
+use rand::{rngs::StdRng, seq::SliceRandom, Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use tokio::{net::TcpStream, task::JoinSet};
 use tokio_stream::StreamExt;
+
+/// Stres Test for the Chat Server
+///
+/// Generates synthetic load with users who joins and sends messages to random roms.
+/// The number of users, number of rooms joined per user and chattines of users can be configured.
+///
+/// !IMPORTANT! Be sure to check and configure your socket limits, before you run the tests
 
 const SERVER_ADDR: &str = "localhost:8080";
 const CHAT_ROOMS_METADATAS: &str = include_str!("../resources/chat_rooms_metadatas.json");
@@ -17,13 +24,13 @@ const CHAT_ROOMS_METADATAS: &str = include_str!("../resources/chat_rooms_metadat
 /// Stress Test Configuration
 // The number of users to spawn, distributed across the load increments
 const LOAD_INCREMENTS: &str = r#"[
-    { "user_count": 300, "after": { "secs": 10, "nanos": 0 }, "steps": 10 },
-    { "user_count": 500, "after": { "secs": 60, "nanos": 0 }, "steps": 60 }
+    { "user_count": 1200, "after": { "secs": 60, "nanos": 0 }, "steps": 60 },
+    { "user_count": 2400, "after": { "secs": 120, "nanos": 0 }, "steps": 60 }
 ]"#;
 // How many rooms a user should join, this affects the total tokio task count
 const NUMBER_OF_ROOMS_TO_JOIN: usize = 5;
 // How many milliseconds to wait between each user message
-const USER_CHAT_DELAY_MILLIS: u64 = 1_000;
+const USER_CHAT_DELAY_MILLIS: u64 = 10_000;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct ChatRoomMetadata {
@@ -39,6 +46,17 @@ struct LoadIncrements {
 }
 
 async fn spawn_single_user(rooms_to_join: Vec<String>) -> anyhow::Result<()> {
+    let result = spawn_single_user_raw(rooms_to_join).await;
+
+    match result.as_ref() {
+        Ok(_) => println!("exited without problems"),
+        Err(err) => println!("some error occurred = {}", err.to_string()),
+    }
+
+    result
+}
+
+async fn spawn_single_user_raw(rooms_to_join: Vec<String>) -> anyhow::Result<()> {
     let tcp_stream = TcpStream::connect(SERVER_ADDR).await?;
     let (mut event_stream, mut command_writer) = transport::client::split_tcp_stream(tcp_stream);
 
@@ -60,6 +78,12 @@ async fn spawn_single_user(rooms_to_join: Vec<String>) -> anyhow::Result<()> {
         let to_sleep = Duration::from_millis(USER_CHAT_DELAY_MILLIS);
 
         async move {
+            // sleep initially for a time to distribute the messaging times
+            tokio::time::sleep(Duration::from_millis(
+                rng.gen_range(1..USER_CHAT_DELAY_MILLIS),
+            ))
+            .await;
+
             loop {
                 let room_name = rooms_to_join.choose(&mut rng).unwrap();
                 let _ = command_writer
