@@ -6,7 +6,7 @@ use comms::{
     transport,
 };
 use nanoid::nanoid;
-use rand::{rngs::StdRng, seq::SliceRandom, Rng, SeedableRng};
+use rand::{rngs::StdRng, Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use tokio::{net::TcpStream, task::JoinSet};
 use tokio_stream::StreamExt;
@@ -31,6 +31,29 @@ const LOAD_INCREMENTS: &str = r#"[
 const NUMBER_OF_ROOMS_TO_JOIN: usize = 5;
 // How many milliseconds to wait between each user message
 const USER_CHAT_DELAY_MILLIS: u64 = 10_000;
+
+/// [RotatingIterator] is a simple iterator that rotates through a list of items
+/// and starts from the beginning when the end is reached.
+struct RotatingIterator<T> {
+    items: Vec<T>,
+    current: usize,
+}
+
+impl<T> RotatingIterator<T> {
+    fn new(items: Vec<T>) -> Self {
+        Self { items, current: 0 }
+    }
+}
+
+impl<T: Clone> Iterator for RotatingIterator<T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let item = self.items.get(self.current).cloned();
+        self.current = (self.current + 1) % self.items.len();
+        item
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct ChatRoomMetadata {
@@ -75,6 +98,7 @@ async fn spawn_single_user_raw(rooms_to_join: Vec<String>) -> anyhow::Result<()>
 
     let join_handle = tokio::spawn({
         let mut rng = StdRng::from_entropy();
+        let mut rooms_iterator = RotatingIterator::new(rooms_to_join);
         let to_sleep = Duration::from_millis(USER_CHAT_DELAY_MILLIS);
 
         async move {
@@ -85,7 +109,7 @@ async fn spawn_single_user_raw(rooms_to_join: Vec<String>) -> anyhow::Result<()>
             .await;
 
             loop {
-                let room_name = rooms_to_join.choose(&mut rng).unwrap();
+                let room_name = rooms_iterator.next().unwrap();
                 let _ = command_writer
                     .write(&UserCommand::SendMessage(
                         comms::command::SendMessageCommand {
@@ -108,13 +132,12 @@ async fn spawn_single_user_raw(rooms_to_join: Vec<String>) -> anyhow::Result<()>
 
 #[tokio::main]
 async fn main() {
-    let mut rng = StdRng::from_entropy();
-
     let load_increments: Vec<LoadIncrements> =
         serde_json::from_str(LOAD_INCREMENTS).expect("could not parse the load increments");
     let chat_room_metadatas: Vec<ChatRoomMetadata> = serde_json::from_str(CHAT_ROOMS_METADATAS)
         .expect("could not parse the chat rooms metadatas");
 
+    let mut room_iterator = RotatingIterator::new(chat_room_metadatas);
     let mut join_set: JoinSet<anyhow::Result<()>> = JoinSet::new();
 
     let mut current: usize = 0;
@@ -126,9 +149,9 @@ async fn main() {
 
         for _ in 0..li.steps {
             for _ in 0..to_increment {
-                let rooms_to_join = chat_room_metadatas
-                    .choose_multiple(&mut rng, NUMBER_OF_ROOMS_TO_JOIN)
-                    .into_iter()
+                let rooms_to_join = room_iterator
+                    .by_ref()
+                    .take(NUMBER_OF_ROOMS_TO_JOIN)
                     .map(|metadata| metadata.name.clone())
                     .collect();
 
