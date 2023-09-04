@@ -7,7 +7,7 @@ The `server` binary is the backbone of the [rust-chat-server](../). It establish
 ## 🛠 Technical Overview
 
 - **Async I/O**: Utilizes [Tokio Runtime](https://tokio.rs/) and [Tokio Streams](https://tokio.rs/tokio/tutorial/streams) for asynchronous, non-blocking I/O.
-- **Actor Model**: Uses [Tokio Channels](https://tokio.rs/tokio/tutorial/channels) for an actor-inspired architecture.
+- **Actor-like Model**: Uses [Tokio Channels](https://tokio.rs/tokio/tutorial/channels) for an actor-inspired, lightweight architecture.
 - **Chat Rooms**: File-based (JSON) chat room definitions in the [resources/](./resources/chat_rooms_metadatas.json) folder.
 
 ## 🏗 High-Level Architecture 
@@ -26,7 +26,7 @@ The `server` binary is the backbone of the [rust-chat-server](../). It establish
 
 ## 🚀 Getting Started
 
-Run the server with `cargo run` or `cargo run --bin server`. Defaults to port `:8080`. Any bootstrap issues will result in an application exit.
+Run the server with `cargo run` or `cargo run --bin server` according to your working directory. Defaults to port `:8080`. Any bootstrap issues will result in an application exiting with error.
 
 ## 🧪 Stress Testing
 

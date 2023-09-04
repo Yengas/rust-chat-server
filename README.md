@@ -2,7 +2,7 @@
 
 This project serves as a learning exercise in [Rust](https://www.rust-lang.org/), [Tokio](https://tokio.rs/), [Channels](https://tokio.rs/tokio/tutorial/channels), and TUI (Terminal User Interface) programming. It features a room-based chat server with a Terminal User Interface (TUI), utilizing technologies such as Tokio, Ratatui, and a Redux-inspired architecture.
 
-![TUI Demo](./docs/tui.gif)
+![TUI Demo](./tui/docs/tui.gif)
 
 **Note**: This project is not suitable for production use. It's designed strictly for educational purposes.
 

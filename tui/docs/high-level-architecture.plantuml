@@ -1,0 +1,54 @@
+@startuml High Level Architecture - Diagram
+
+skinparam linetype orthogonally
+
+entity "Chat Server" as chat_server <<Chat Server>> 
+
+package "State Store" as ss_p {
+    component "Server Handle" as server_handle
+    component "State Store\nMain Loop" as state_store
+    component "State" as state
+    component "State Channel" as state_ch
+
+    state_store -[hidden]u-> server_handle
+    state -[hidden]d-> state_ch
+}
+
+chat_server <-d-> server_handle: TCP Communication\nvia the Comms Library
+
+package "UI Management" as um_p {
+    component "User Management\nMain Loop" as user_management
+    component "User Action\nChannel" as action_ch
+
+    package "Pages" as pages {
+        component "Chat Page" as chat_page
+        component "Connect Page" as connect_page
+
+        chat_page -[hidden]d-> connect_page
+    }
+
+    package "Components" as components {
+        component "Input Box" as input_box
+    }
+
+    action_ch -[hidden]d-> user_management
+    user_management -[hidden]l-> pages
+    components -[hidden]d-> pages
+    user_management -d-> pages: Render Pages\nAccording to the\nState Changes
+    pages -d-> components: ...Uses pure Components
+    pages -> action_ch: Send the User Actions
+}
+
+actor User as user
+user -d-> um_p: Interact via\nthe Terminal
+
+state_store <-u-> server_handle: Subscribe to the Server Events\nand Send Commands
+state_store -> action_ch: Subscribe to the User Actions
+state_store -> state: Update the State\nper user actions\nand server events
+state_store -> state_ch: Send Updated State
+
+state_ch <- user_management: Subscribe to State Changes
+
+ss_p -[hidden]d-> um_p
+
+@enduml
