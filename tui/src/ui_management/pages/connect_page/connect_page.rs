@@ -1,4 +1,4 @@
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::{prelude::*, widgets::*, Frame};
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -84,6 +84,10 @@ impl Component for ConnectPage {
 
     fn handle_key_event(&mut self, key: KeyEvent) {
         self.input_box.handle_key_event(key);
+
+        if key.kind != KeyEventKind::Press {
+            return;
+        }
 
         match key.code {
             KeyCode::Enter => {

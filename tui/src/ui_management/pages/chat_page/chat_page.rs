@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::{prelude::*, widgets::*, Frame};
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -187,6 +187,10 @@ impl Component for ChatPage {
     }
 
     fn handle_key_event(&mut self, key: KeyEvent) {
+        if key.kind != KeyEventKind::Press {
+            return;
+        }
+
         let active_section = self.active_section.clone();
 
         match active_section {

@@ -1,4 +1,4 @@
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{
     prelude::{Backend, Rect},
     style::{Color, Modifier, Style},
@@ -136,6 +136,10 @@ impl Component for RoomList {
     }
 
     fn handle_key_event(&mut self, key: KeyEvent) {
+        if key.kind != KeyEventKind::Press {
+            return;
+        }
+
         match key.code {
             KeyCode::Up => {
                 self.previous();
