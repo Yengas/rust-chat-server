@@ -1,0 +1,39 @@
+@startuml High Level Architecture - Diagram
+
+skinparam linetype orthogonally
+skinparam orthogonalSpace 30
+
+together {
+  entity "Bootstrap" as bootstrap <<Bootstrap>> 
+  actor User as user
+}
+
+together {
+  package "Room Manager" as rm_p {
+      package "Room" {
+          component "Chat Room" as chat_room
+      }
+
+      component "Room Manager" as room_manager
+  }
+
+  package "Session" as s_p {
+      component "Chat Session" as chat_session
+  }
+}
+
+bootstrap -[hidden]d-> user
+bootstrap -[hidden]r-> rm_p
+user -[hidden]r-> s_p
+rm_p -[hidden]d-> s_p
+
+bootstrap -> rm_p: 1. Setup Each Room and\nRoom Manager Globally
+user -> s_p: 2. Connect to Server\nand send Commands
+
+chat_session -u-> room_manager: 3. Join/Leave Rooms per User Request,\n store and manage the **UserSessionHandle**\n returned for each room
+room_manager -> chat_room: 3.1. Join/Leave Room utilizing\n the **UserSessionHandle** 
+chat_session -> chat_session: 4. Handle Message Sending and\nCreate Unified Event Stream\nof dynamic number of joined rooms
+
+user <- s_p: 5. Send Events
+
+@enduml

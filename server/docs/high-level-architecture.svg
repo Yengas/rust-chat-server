@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentStyleType="text/css" height="412px" preserveAspectRatio="none" style="width:850px;height:412px;background:#FFFFFF;" version="1.1" viewBox="0 0 850 412" width="850px" zoomAndPan="magnify"><defs/><g><!--MD5=[4184133507ba042d235075d7c0c6a9c3]
+cluster rm_p--><g id="cluster_rm_p"><path d="M268.5,6 L377.5,6 A3.75,3.75 0 0 1 380,8.5 L387,28.4883 L840.5,28.4883 A2.5,2.5 0 0 1 843,30.9883 L843,183.99 A2.5,2.5 0 0 1 840.5,186.49 L268.5,186.49 A2.5,2.5 0 0 1 266,183.99 L266,8.5 A2.5,2.5 0 0 1 268.5,6 " fill="none" style="stroke:#000000;stroke-width:1.5;"/><line style="stroke:#000000;stroke-width:1.5;" x1="266" x2="387" y1="28.4883" y2="28.4883"/><text fill="#000000" font-family="sans-serif" font-size="14" font-weight="bold" lengthAdjust="spacing" textLength="108" x="270" y="21.5352">Room Manager</text></g><!--MD5=[63ec8933c5179c63d6006729dd909bff]
+cluster Room--><g id="cluster_Room"><path d="M665.5,57 L708.5,57 A3.75,3.75 0 0 1 711,59.5 L718,79.4883 L808.5,79.4883 A2.5,2.5 0 0 1 811,81.9883 L811,151.99 A2.5,2.5 0 0 1 808.5,154.49 L665.5,154.49 A2.5,2.5 0 0 1 663,151.99 L663,59.5 A2.5,2.5 0 0 1 665.5,57 " fill="none" style="stroke:#000000;stroke-width:1.5;"/><line style="stroke:#000000;stroke-width:1.5;" x1="663" x2="718" y1="79.4883" y2="79.4883"/><text fill="#000000" font-family="sans-serif" font-size="14" font-weight="bold" lengthAdjust="spacing" textLength="42" x="667" y="72.5352">Room</text></g><!--MD5=[3f5d257e3337a8bbef973bd3e40454a0]
+cluster s_p--><g id="cluster_s_p"><path d="M268.5,281.49 L324.5,281.49 A3.75,3.75 0 0 1 327,283.99 L334,303.9783 L714.5,303.9783 A2.5,2.5 0 0 1 717,306.4783 L717,402.99 A2.5,2.5 0 0 1 714.5,405.49 L268.5,405.49 A2.5,2.5 0 0 1 266,402.99 L266,283.99 A2.5,2.5 0 0 1 268.5,281.49 " fill="none" style="stroke:#000000;stroke-width:1.5;"/><line style="stroke:#000000;stroke-width:1.5;" x1="266" x2="334" y1="303.9783" y2="303.9783"/><text fill="#000000" font-family="sans-serif" font-size="14" font-weight="bold" lengthAdjust="spacing" textLength="55" x="270" y="297.0252">Session</text></g><!--MD5=[7a199650d090603358194377cd2d7296]
+entity bootstrap--><g id="elem_bootstrap"><ellipse cx="46" cy="115.2483" fill="#F1F1F1" rx="12" ry="12" style="stroke:#181818;stroke-width:0.5;"/><line style="stroke:#181818;stroke-width:0.5;" x1="34" x2="58" y1="129.2483" y2="129.2483"/><text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="66" x="13" y="144.7834">Bootstrap</text><text fill="#000000" font-family="sans-serif" font-size="14" font-style="italic" lengthAdjust="spacing" textLength="80" x="6" y="96.2952">«Bootstrap»</text></g><!--MD5=[8fc3522a43f8c7199df5e09e5bb0188e]
+entity user--><g id="elem_user"><ellipse cx="70" cy="323.25" fill="#F1F1F1" rx="8" ry="8" style="stroke:#181818;stroke-width:0.5;"/><path d="M70,331.25 L70,358.25 M57,339.25 L83,339.25 M70,358.25 L57,373.25 M70,358.25 L83,373.25 " fill="none" style="stroke:#181818;stroke-width:0.5;"/><text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="31" x="54.5" y="388.2852">User</text></g><!--MD5=[f40bd7405177ac046f01fa48101eb8b0]
+entity room_manager--><g id="elem_room_manager"><rect fill="#F1F1F1" height="46.4883" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="144" x="309" y="92"/><rect fill="#F1F1F1" height="10" style="stroke:#181818;stroke-width:0.5;" width="15" x="433" y="97"/><rect fill="#F1F1F1" height="2" style="stroke:#181818;stroke-width:0.5;" width="4" x="431" y="99"/><rect fill="#F1F1F1" height="2" style="stroke:#181818;stroke-width:0.5;" width="4" x="431" y="103"/><text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="104" x="324" y="125.5352">Room Manager</text></g><!--MD5=[7d21d7a57c1561bcac6e788b0f588ca1]
+entity chat_room--><g id="elem_chat_room"><rect fill="#F1F1F1" height="46.4883" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="116" x="679" y="92"/><rect fill="#F1F1F1" height="10" style="stroke:#181818;stroke-width:0.5;" width="15" x="775" y="97"/><rect fill="#F1F1F1" height="2" style="stroke:#181818;stroke-width:0.5;" width="4" x="773" y="99"/><rect fill="#F1F1F1" height="2" style="stroke:#181818;stroke-width:0.5;" width="4" x="773" y="103"/><text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="76" x="694" y="125.5352">Chat Room</text></g><!--MD5=[4bda87e97adbbb95aab714d3239ee0cc]
+entity chat_session--><g id="elem_chat_session"><rect fill="#F1F1F1" height="46.4883" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="128" x="309" y="329.75"/><rect fill="#F1F1F1" height="10" style="stroke:#181818;stroke-width:0.5;" width="15" x="417" y="334.75"/><rect fill="#F1F1F1" height="2" style="stroke:#181818;stroke-width:0.5;" width="4" x="415" y="336.75"/><rect fill="#F1F1F1" height="2" style="stroke:#181818;stroke-width:0.5;" width="4" x="415" y="340.75"/><text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="88" x="324" y="363.2852">Chat Session</text></g><!--MD5=[cee53cd970373a4f0f9490981c33c8ce]
+link bootstrap to user--><!--MD5=[f3bef97fed1d73504d66d8191cfaf0d5]
+link bootstrap to rm_p--><!--MD5=[f3bef97fed1d73504d66d8191cfaf0d5]
+link bootstrap to rm_p--><g id="link_bootstrap_rm_p"><path d="M86.5,115.25 C117.725,115.25 161.7725,115.25 199.3287,115.25 C218.1069,115.25 235.2622,115.25 248.3805,115.25 C254.9396,115.25 260.4895,115.25 264.7283,115.25 C264.9933,115.25 265.2531,115.25 265.5077,115.25 C265.635,115.25 265.761,115.25 265.8857,115.25 " fill="none" id="bootstrap-to-rm_p-1" style="stroke:#181818;stroke-width:1.0;"/><polygon fill="#181818" points="265.8857,115.25,256.8857,111.25,260.8857,115.25,256.8857,119.25,265.8857,115.25" style="stroke:#181818;stroke-width:1.0;"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="151" x="104.32" y="93.8184">1. Setup Each Room and</text><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="148" x="105.82" y="109.1289">Room Manager Globally</text></g><!--MD5=[fb85154c5f55a99c2b611e8b0f4af47d]
+link user to s_p--><!--MD5=[fb85154c5f55a99c2b611e8b0f4af47d]
+link user to s_p--><g id="link_user_s_p"><path d="M85.67,352.99 C108.81,352.99 153.72,352.99 193.8813,352.99 C213.9619,352.99 232.8553,352.99 247.2467,352.99 C254.4424,352.99 260.5126,352.99 265.0429,352.99 C265.3261,352.99 265.6032,352.99 265.8742,352.99 " fill="none" id="user-to-s_p-1" style="stroke:#181818;stroke-width:1.0;"/><polygon fill="#181818" points="265.8742,352.99,256.8742,348.99,260.8742,352.99,256.8742,356.99,265.8742,352.99" style="stroke:#181818;stroke-width:1.0;"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="127" x="116.07" y="331.5584">2. Connect to Server</text><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="132" x="113.57" y="346.8689">and send Commands</text></g><!--MD5=[125f26d4ae744ec2c30bf5e78437eed4]
+reverse link user to s_p--><g id="link_user_s_p"><path d="M91.36,361.57 C103.4,365.94 118.83,370.79 133.07,372.99 C173.92,379.31 185.54,381.11 226.07,372.99 C236.325,370.935 247.1275,366.635 255.8762,362.5475 C258.0634,361.5256 260.1223,360.517 262.0121,359.5601 C262.957,359.0817 263.8597,358.6161 264.715,358.1683 C265.1427,357.9444 265.5585,357.7249 265.9619,357.5105 " fill="none" id="user-backto-s_p" style="stroke:#181818;stroke-width:1.0;"/><polygon fill="#181818" points="86.75,359.47,93.7909,366.3566,91.4363,361.2131,96.5799,358.8585,86.75,359.47" style="stroke:#181818;stroke-width:1.0;"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="91" x="134.07" y="369.5584">5. Send Events</text></g><!--MD5=[336338f9411af978a0c6ea9d6df4d080]
+link rm_p to s_p--><!--MD5=[1232694e64a80c36c63ce48dbbb1d417]
+reverse link room_manager to chat_session--><g id="link_room_manager_chat_session"><path d="M380.04,144.67 C378.43,192.06 375.23,286.3 373.76,329.45 " fill="none" id="room_manager-backto-chat_session" style="stroke:#181818;stroke-width:1.0;"/><polygon fill="#181818" points="380.23,139.85,375.924,148.7077,380.0587,144.8471,383.9193,148.9818,380.23,139.85" style="stroke:#181818;stroke-width:1.0;"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="243" x="393" y="224.0584">3. Join/Leave Rooms per User Request,</text><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="136" x="382" y="239.3689">store and manage the</text><text fill="#000000" font-family="sans-serif" font-size="13" font-weight="bold" lengthAdjust="spacing" textLength="129" x="522" y="239.3689">UserSessionHandle</text><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="145" x="444" y="254.6795">returned for each room</text></g><!--MD5=[71fd1fade04c2c0712f316a1bd78d0a4]
+link room_manager to chat_room--><g id="link_room_manager_chat_room"><path d="M453.47,115.25 C517.87,115.25 611.12,115.25 672.86,115.25 " fill="none" id="room_manager-to-chat_room" style="stroke:#181818;stroke-width:1.0;"/><polygon fill="#181818" points="677.74,115.25,668.74,111.25,672.74,115.25,668.74,119.25,677.74,115.25" style="stroke:#181818;stroke-width:1.0;"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="190" x="471" y="93.8184">3.1. Join/Leave Room utilizing</text><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="20" x="491.5" y="109.1289">the</text><text fill="#000000" font-family="sans-serif" font-size="13" font-weight="bold" lengthAdjust="spacing" textLength="129" x="515.5" y="109.1289">UserSessionHandle</text></g><!--MD5=[5cee25e36c9de8ba7aae808aeed97540]
+link chat_session to chat_session--><g id="link_chat_session_chat_session"><path d="M437.27,330.71 C456.76,331.27 472,338.7 472,352.99 C472,365.83 459.7,373.13 443.07,374.89 " fill="none" id="chat_session-to-chat_session" style="stroke:#181818;stroke-width:1.0;"/><polygon fill="#181818" points="438.27,375.27,447.5129,378.6712,443.2592,374.9421,446.9883,370.6885,438.27,375.27" style="stroke:#181818;stroke-width:1.0;"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="199" x="491.5" y="343.0584">4. Handle Message Sending and</text><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="174" x="504" y="358.3689">Create Unified Event Stream</text><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="226" x="478" y="373.6795">of dynamic number of joined rooms</text></g><!--MD5=[4ddfc2c921d334e84758e38f2259661a]
+@startuml Server Diagram
+
+skinparam linetype orthogonally
+skinparam orthogonalSpace 30
+
+together {
+  entity "Bootstrap" as bootstrap <<Bootstrap>> 
+  actor User as user
+}
+
+together {
+  package "Room Manager" as rm_p {
+      package "Room" {
+          component "Chat Room" as chat_room
+      }
+
+      component "Room Manager" as room_manager
+  }
+
+  package "Session" as s_p {
+      component "Chat Session" as chat_session
+  }
+}
+
+bootstrap -[hidden]d-> user
+bootstrap -[hidden]r-> rm_p
+user -[hidden]r-> s_p
+rm_p -[hidden]d-> s_p
+
+bootstrap -> rm_p: 1. Setup Each Room and\nRoom Manager Globally
+user -> s_p: 2. Connect to Server\nand send Commands
+
+chat_session -u-> room_manager: 3. Join/Leave Rooms per User Request,\n store and manage the **UserSessionHandle**\n returned for each room
+room_manager -> chat_room: 3.1. Join/Leave Room utilizing\n the **UserSessionHandle** 
+chat_session -> chat_session: 4. Handle Message Sending and\nCreate Unified Event Stream\nof dynamic number of joined rooms
+
+user <- s_p: 5. Send Events
+
+@enduml
+
+PlantUML version 1.2022.7(Mon Aug 22 20:01:30 TRT 2022)
+(GPL source distribution)
+Java Runtime: OpenJDK Runtime Environment
+JVM: OpenJDK 64-Bit Server VM
+Default Encoding: UTF-8
+Language: en
+Country: TR
+--></g></svg>
