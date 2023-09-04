@@ -174,7 +174,7 @@ impl ComponentRender<()> for ConnectPage {
         .style(
             Style::default()
                 .fg(Color::Red)
-                .add_modifier(Modifier::RAPID_BLINK | Modifier::SLOW_BLINK | Modifier::ITALIC),
+                .add_modifier(Modifier::SLOW_BLINK | Modifier::ITALIC),
         );
 
         frame.render_widget(error_message, container_error_message);

@@ -405,7 +405,7 @@ impl ComponentRender<()> for ChatPage {
         frame.render_widget(room_users_list, container_room_users);
 
         let mut usage_text: Text = widget_usage_to_text(self.usage_info());
-        usage_text.patch_style(Style::default().add_modifier(Modifier::RAPID_BLINK));
+        usage_text.patch_style(Style::default());
         let usage = Paragraph::new(usage_text)
             .wrap(Wrap { trim: true })
             .block(Block::default().borders(Borders::ALL).title("Usage"));

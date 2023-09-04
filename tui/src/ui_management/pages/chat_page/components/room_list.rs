@@ -203,7 +203,7 @@ impl ComponentRender<RenderProps> for RoomList {
                 {
                     Style::default().add_modifier(Modifier::BOLD)
                 } else if room_state.has_unread {
-                    Style::default().add_modifier(Modifier::RAPID_BLINK | Modifier::ITALIC)
+                    Style::default().add_modifier(Modifier::SLOW_BLINK | Modifier::ITALIC)
                 } else {
                     Style::default()
                 };
