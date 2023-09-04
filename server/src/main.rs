@@ -2,12 +2,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use room_manager::RoomManagerBuilder;
-use tokio::{
-    net::TcpListener,
-    signal::unix::{signal, SignalKind},
-    sync::broadcast,
-    task::JoinSet,
-};
+use tokio::{net::TcpListener, signal::ctrl_c, sync::broadcast, task::JoinSet};
 
 use crate::room_manager::ChatRoomMetadata;
 
@@ -31,8 +26,6 @@ async fn main() {
     );
 
     let mut join_set: JoinSet<anyhow::Result<()>> = JoinSet::new();
-    let mut interrupt =
-        signal(SignalKind::interrupt()).expect("failed to create interrupt signal stream");
     let server = TcpListener::bind(format!("0.0.0.0:{}", PORT))
         .await
         .expect("could not bind to the port");
@@ -41,7 +34,7 @@ async fn main() {
     println!("Listening on port {}", PORT);
     loop {
         tokio::select! {
-            _ = interrupt.recv() => {
+            Ok(_) = ctrl_c() => {
                 println!("Server interrupted. Gracefully shutting down.");
                 quit_tx.send(()).context("failed to send quit signal").unwrap();
                 break;
